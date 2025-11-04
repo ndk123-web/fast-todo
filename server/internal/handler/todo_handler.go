@@ -43,7 +43,7 @@ func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
 	}
 
-	fmt.Println("Body: ", todo)
+	fmt.Println("Body: ", r.Body)
 
 	todores, todoerr := h.service.CreateTodo(context.Background(), todo)
 

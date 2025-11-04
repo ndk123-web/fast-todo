@@ -6,6 +6,7 @@ import (
 
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -49,10 +50,12 @@ func (r *todoRepo) CreateTodo(ctx context.Context, todo model.Todo) (model.Todo,
 		return model.Todo{}, errors.New("Task is Invalid / Empty")
 	}
 
-	_, err := r.collection.InsertOne(ctx, todo)
+	insertedId, err := r.collection.InsertOne(ctx, todo)
 	if err != nil {
 		return model.Todo{}, err
 	}
+
+	todo.ID = insertedId.InsertedID.(primitive.ObjectID)
 	return todo, nil
 }
 
