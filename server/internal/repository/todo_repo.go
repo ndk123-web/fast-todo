@@ -15,6 +15,7 @@ import (
 type TodoRepository interface {
 	GetAll(ctx context.Context) ([]model.Todo, error)
 	CreateTodo(ctx context.Context, todo model.Todo) (model.Todo, error)
+	UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error)
 }
 
 type todoRepo struct {
@@ -57,6 +58,39 @@ func (r *todoRepo) CreateTodo(ctx context.Context, todo model.Todo) (model.Todo,
 
 	todo.ID = insertedId.InsertedID.(primitive.ObjectID)
 	return todo, nil
+}
+
+func (r *todoRepo) UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error) {
+	if todoId == "" {
+		return model.Todo{}, errors.New("Todo Id is Empty")
+	}
+
+	// convert the string id to object Id
+	oid, err2 := primitive.ObjectIDFromHex(todoId)
+
+	if err2 != nil {
+		return model.Todo{}, err2
+	}
+
+	// always convert string -> object id
+	filter := bson.M{"_id": oid}
+	update := bson.M{"$set": bson.M{"task": updatedTask}}
+
+	_, err := r.collection.UpdateOne(ctx, filter, update)
+
+	if err != nil {
+		return model.Todo{}, err
+	}
+
+	// find the todo
+	var updatedTodo model.Todo
+	err3 := r.collection.FindOne(ctx, filter).Decode(&updatedTodo)
+
+	if err3 != nil {
+		return model.Todo{}, err
+	}
+
+	return updatedTodo, nil
 }
 
 // the return type is TodoRepository (Interface) its because

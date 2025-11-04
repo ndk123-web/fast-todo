@@ -12,6 +12,7 @@ import (
 type TodoHandler interface {
 	GetTodos(w http.ResponseWriter, r *http.Request)
 	CreateTodo(w http.ResponseWriter, r *http.Request)
+	UpdateTodo(w http.ResponseWriter, r *http.Request)
 }
 
 type todoHandler struct {
@@ -54,4 +55,23 @@ func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Todo Create : ", todores)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todores)
+}
+
+type updateTodo struct {
+	ID   string `json:"id"`
+	Task string `json:"task"`
+}
+
+func (h *todoHandler) UpdateTodo(w http.ResponseWriter, r *http.Request) {
+	var tobeUpdate updateTodo
+	if err := json.NewDecoder(r.Body).Decode(&tobeUpdate); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	}
+
+	todo, err2 := h.service.UpdateTodo(context.Background(), tobeUpdate.ID, tobeUpdate.Task)
+	if err2 != nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": err2.Error()})
+	}
+
+	json.NewEncoder(w).Encode(todo)
 }
