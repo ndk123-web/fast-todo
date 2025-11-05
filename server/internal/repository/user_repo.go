@@ -10,8 +10,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type UserStruct struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type UserRepository interface {
 	GetUserTodos(ctx context.Context, userId string) ([]model.Todo, error)
+	SignUpUser(ctx context.Context, email string, password string) (*UserStruct, error)
 	// login
 	// logout
 }
@@ -41,24 +47,59 @@ func (r *userRepo) GetUserTodos(ctx context.Context, userId string) ([]model.Tod
 		return []model.Todo{}, err2
 	}
 
-	// in the end free the resources 
+	// in the end free the resources
 	defer cursor.Close(ctx)
 
 	// result array
 	var userTodos []model.Todo
 
-	// loop over response cursor 
+	// loop over response cursor
 	for cursor.Next(ctx) {
 		var userTodo model.Todo
 		if err := cursor.Decode(&userTodo); err != nil {
 			return []model.Todo{}, err
 		}
 
-		// append answers 
+		// append answers
 		userTodos = append(userTodos, userTodo)
 	}
 
 	return userTodos, nil
+}
+
+type SignUpResponse struct {
+	Email string `json:"email"`
+	Token string `json:token`
+}
+
+func (r *userRepo) SignUpUser(ctx context.Context, email string, password string) (*UserStruct, error) {
+	// We Need to Create JWT Token
+	if email == "" || password == "" {
+		return nil, errors.New("Email / Passoword is Invalid")
+	}
+
+	var user UserStruct
+	// before we need to find if email already exist
+	err2 := r.userColletion.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err2 == nil {
+		// if nil means already exists
+		return nil, errors.New("User Already Exists")
+	} else if !errors.Is(err2, mongo.ErrNoDocuments) {
+		// other db error
+		return nil, err2
+	}
+
+	// else safe
+	// we need to hash the password before storing inside DB
+	currentUser := UserStruct{Email: email, Password: password}
+
+	// we need to store the user in Mongodb
+	_, err := r.userColletion.InsertOne(ctx, currentUser)
+	if err != nil {
+		return nil, err
+	}
+
+	return &currentUser, nil
 }
 
 func NewUserRepository(todoCol *mongo.Collection, userCol *mongo.Collection) UserRepository {
