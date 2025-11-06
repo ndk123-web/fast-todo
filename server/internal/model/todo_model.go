@@ -10,6 +10,8 @@ type Todo struct {
 	// This is Foreign Key / ref to User
 	UserId primitive.ObjectID `bson:"userId,omitempty" json:"userId,omitempty"`
 
+	Priority string `bson:"priority" json:"priority"`
+
 	// why not omitempty
 	// because if false then it wont show in json / bson response
 	Done bool `bson:"done" json:"done"`
