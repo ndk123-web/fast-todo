@@ -17,7 +17,7 @@ type UserStruct struct {
 
 type UserRepository interface {
 	GetUserTodos(ctx context.Context, userId string) ([]model.Todo, error)
-	SignUpUser(ctx context.Context, email string, password string) (*UserStruct, error)
+	SignUpUser(ctx context.Context, email string, password string) (*SignUpResponse, error)
 	// login
 	// logout
 }
@@ -69,14 +69,10 @@ func (r *userRepo) GetUserTodos(ctx context.Context, userId string) ([]model.Tod
 
 type SignUpResponse struct {
 	Email string `json:"email"`
-	Token string `json:token`
+	Token string `json:"token"`
 }
 
-func (r *userRepo) SignUpUser(ctx context.Context, email string, password string) (*UserStruct, error) {
-	// We Need to Create JWT Token
-	if email == "" || password == "" {
-		return nil, errors.New("Email / Passoword is Invalid")
-	}
+func (r *userRepo) SignUpUser(ctx context.Context, email string, password string) (*SignUpResponse, error) {
 
 	var user UserStruct
 	// before we need to find if email already exist
@@ -99,7 +95,9 @@ func (r *userRepo) SignUpUser(ctx context.Context, email string, password string
 		return nil, err
 	}
 
-	return &currentUser, nil
+	return &SignUpResponse{
+		Email: email,
+	}, nil
 }
 
 func NewUserRepository(todoCol *mongo.Collection, userCol *mongo.Collection) UserRepository {

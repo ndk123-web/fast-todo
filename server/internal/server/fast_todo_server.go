@@ -24,14 +24,17 @@ func (s *Server) Start(port string) error {
 	// custom mux (not default mux)
 	// in short its custom router
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/v1/todos/all-user-todos", s.todoHandler.GetTodos)
-	
-	// we need to add here JWT Middleware 
+	mux.Handle("GET /api/v1/todos/all-user-todos", middleware.AuthMiddleware(http.HandlerFunc((s.todoHandler.GetTodos))))
+
+	// we need to add here JWT Middleware
 	mux.HandleFunc("POST /api/v1/todos/create-todo", s.todoHandler.CreateTodo)
 	mux.HandleFunc("PUT /api/v1/todos/update-todo", s.todoHandler.UpdateTodo)
 	mux.HandleFunc("DELETE /api/v1/todos/delete-todo", s.todoHandler.DeleteTodo)
 
-	mux.HandleFunc("GET /api/v1/todos/get-user-todos", s.userHandler.GetUserTodos)
+	// middleware for Get User Todos
+	mux.Handle("GET /api/v1/todos/get-user-todos", middleware.AuthMiddleware(http.HandlerFunc(s.userHandler.GetUserTodos)))
+	mux.HandleFunc("POST /api/v1/users/signup", s.userHandler.SignUpUser)
+
 	// added Global LoggingMiddleware Middleware
 	// mux return *ServeMux which implements Handler Interface
 	// first it checks the path

@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
+	"github.com/ndk123-web/fast-todo/internal/middleware"
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"github.com/ndk123-web/fast-todo/internal/service"
-	"net/http"
 )
 
 // TodoHandler defines the interface for HTTP request handlers for todo operations
@@ -38,8 +40,14 @@ func (h *todoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error fetching todos", http.StatusInternalServerError)
 		return
 	}
+
+	userEmail, ok := r.Context().Value(middleware.UserEmailKey).(string)
+	if !ok {
+		http.Error(w, "UserEmail Not Exists in Email", http.StatusExpectationFailed)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(todos)
+	json.NewEncoder(w).Encode(map[string]any{"response": todos, "userEmail": userEmail})
 }
 
 // CreateTodo handles HTTP POST requests to create a new todo item

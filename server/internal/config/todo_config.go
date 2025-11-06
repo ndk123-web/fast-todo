@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	MongoUri string
-	Port     string
+	MongoUri  string
+	Port      string
+	JwtSecret []byte
 }
 
 func LoadConfig() (*Config, error) {
@@ -20,7 +21,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		MongoUri: os.Getenv("MONGO_URI"),
-		Port:     os.Getenv("DEVLOPMENT_PORT"),
+		MongoUri:  os.Getenv("MONGO_URI"),
+		Port:      os.Getenv("DEVLOPMENT_PORT"),
+		JwtSecret: []byte(os.Getenv("JWT_SECRET")),
 	}, nil
 }
