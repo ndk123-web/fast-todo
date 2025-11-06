@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
+import FlowchartView from './pages/FlowchartView'
 import './App.css'
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/flowchart" element={<FlowchartView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

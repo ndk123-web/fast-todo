@@ -1,0 +1,35 @@
+/* MiniMap Toggle Button - Bottom-right positioned */
+.minimap-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 15px rgba(102, 126, 234, 0.3),
+    0 0 30px rgba(102, 126, 234, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  margin-top: 10px;
+}
+
+.minimap-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(102, 126, 234, 0.4),
+    0 0 40px rgba(102, 126, 234, 0.3);
+}
+
+.minimap-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+.minimap-toggle-btn:hover svg {
+  transform: scale(1.1);
+}

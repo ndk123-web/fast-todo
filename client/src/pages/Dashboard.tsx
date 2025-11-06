@@ -232,20 +232,36 @@ const Dashboard = () => {
               <h1 className="dashboard-title">Welcome back, John! 👋</h1>
               <p className="dashboard-subtitle">Here's what's happening with your tasks today.</p>
             </div>
-            {/* Quick statistics cards */}
-            <div className="quick-stats">
-              <div className="stat-card">
-                <div className="stat-icon">✓</div>
-                <div className="stat-info">
-                  <div className="stat-value">{completedTodos}/{totalTodos}</div>
-                  <div className="stat-label">Tasks Done</div>
+            <div className="welcome-actions">
+              {/* Flowchart View button */}
+              <button 
+                className="flowchart-view-btn"
+                onClick={() => navigate('/flowchart')}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 4H8V9H3V4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 4H17V9H12V4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 11H8V16H3V11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 11H17V16H12V11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Flowchart View
+              </button>
+              
+              {/* Quick statistics cards */}
+              <div className="quick-stats">
+                <div className="stat-card">
+                  <div className="stat-icon">✓</div>
+                  <div className="stat-info">
+                    <div className="stat-value">{completedTodos}/{totalTodos}</div>
+                    <div className="stat-label">Tasks Done</div>
+                  </div>
                 </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon">📊</div>
-                <div className="stat-info">
-                  <div className="stat-value">{completionRate}%</div>
-                  <div className="stat-label">Completion Rate</div>
+                <div className="stat-card">
+                  <div className="stat-icon">📊</div>
+                  <div className="stat-info">
+                    <div className="stat-value">{completionRate}%</div>
+                    <div className="stat-label">Completion Rate</div>
+                  </div>
                 </div>
               </div>
             </div>
