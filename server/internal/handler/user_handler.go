@@ -68,7 +68,7 @@ func (h *userHandler) SignUpUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	refreshToken, err := r.Cookie("refresh_token")
+	refreshToken, err := r.Cookie("_refresh_token")
 	if err != nil {
 		http.Error(w, "No refresh token", http.StatusUnauthorized)
 		return
@@ -90,6 +90,9 @@ func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		"exp":   time.Now().Add(15 * time.Minute).Unix(),
 	})
 
+	// w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	tokenStr, _ := newAccess.SignedString([]byte(service.JWTSECRET))
 	json.NewEncoder(w).Encode(map[string]string{"accessToken": tokenStr})
 }
