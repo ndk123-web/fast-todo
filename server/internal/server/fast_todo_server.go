@@ -8,16 +8,18 @@ import (
 )
 
 type Server struct {
-	todoHandler handler.TodoHandler
-	userHandler handler.UserHandler
-	goalHandler handler.GoalHandler
+	todoHandler      handler.TodoHandler
+	userHandler      handler.UserHandler
+	goalHandler      handler.GoalHandler
+	workspaceHandler handler.WorkspaceHandler
 }
 
-func NewServer(todoHandler handler.TodoHandler, userHandler handler.UserHandler, goalHandler handler.GoalHandler) *Server {
+func NewServer(todoHandler handler.TodoHandler, userHandler handler.UserHandler, goalHandler handler.GoalHandler, workspaceHandler handler.WorkspaceHandler) *Server {
 	return &Server{
-		todoHandler: todoHandler,
-		userHandler: userHandler,
-		goalHandler: goalHandler,
+		todoHandler:      todoHandler,
+		userHandler:      userHandler,
+		goalHandler:      goalHandler,
+		workspaceHandler: workspaceHandler,
 	}
 }
 
@@ -26,6 +28,8 @@ func (s *Server) Start(port string) error {
 	// custom mux (not default mux)
 	// in short its custom router
 	mux := http.NewServeMux()
+
+	// For Admin Purpose
 	mux.Handle("GET /api/v1/todos/all-user-todos", middleware.AuthMiddleware(http.HandlerFunc((s.todoHandler.GetTodos))))
 
 	// we need to add here JWT Middleware
@@ -35,14 +39,19 @@ func (s *Server) Start(port string) error {
 
 	// middleware for Get User Todos
 	mux.Handle("GET /api/v1/todos/get-user-todos", middleware.AuthMiddleware(http.HandlerFunc(s.userHandler.GetUserTodos)))
+
+	// No Need Of Middleware
 	mux.HandleFunc("POST /api/v1/users/signup", s.userHandler.SignUpUser)
 	mux.HandleFunc("POST /api/v1/users/signin", s.userHandler.SignInUser)
 
-	// for the refresh token
+	// for the refresh token routes (Currently No Need)
 	mux.HandleFunc("POST /api/v1/user/refresh-token", s.userHandler.RefreshToken)
 
-	// Goals Route
-	mux.HandleFunc("GET /api/v1/users/goals/get-user-goals", s.goalHandler.GetUserGoals)
+	// Goals Routes (Need Auth Middleware)
+	mux.Handle("GET /api/v1/users/goals/get-user-goals", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.GetUserGoals)))
+
+	// workspace Routes (Need Auth Middleware)
+	mux.Handle("GET /api/v1/workspaces/get-user-workspaces", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.GetAllUserWorkspace)))
 
 	// it means cors -> log -> actual handler(mux)
 	// global logging and cors middleware

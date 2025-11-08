@@ -48,3 +48,9 @@ func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId st
 	// finally return the workspaces
 	return workspaces, nil
 }
+
+func NewWorkspaceRepository(workspaceCollection *mongo.Collection) WorkSpaceRepository{
+	return &workspaceRepository{
+		workspaceCollection: workspaceCollection,
+	}
+}

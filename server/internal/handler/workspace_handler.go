@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/ndk123-web/fast-todo/internal/repository"
 	"github.com/ndk123-web/fast-todo/internal/service"
 )
 
@@ -22,7 +23,7 @@ func (h *workspaceHandler) GetAllUserWorkspace(w http.ResponseWriter, r *http.Re
 	values := r.URL.Query()
 	var userId string = values.Get("userId")
 
-	workspaces, err := h.service.GetAllUserWorkspaces(context.Background(), userId)
+	workspaces, err := h.service.GetAllUserWorkspace(context.Background(), userId)
 
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
@@ -30,4 +31,12 @@ func (h *workspaceHandler) GetAllUserWorkspace(w http.ResponseWriter, r *http.Re
 	}
 
 	json.NewEncoder(w).Encode(map[string]any{"response": workspaces})
+}
+
+
+// New Workspace Handler 
+func NewWorkspaceHandler(service repository.WorkSpaceRepository) WorkspaceHandler {
+	return &workspaceHandler{
+		service: service,
+	}
 }

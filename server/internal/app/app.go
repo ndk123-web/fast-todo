@@ -41,6 +41,7 @@ func Run() error {
 	todoCollection := client.Database("golangdb").Collection("todos")
 	userCollection := client.Database("golangdb").Collection("users")
 	goalCollection := client.Database("golangdb").Collection("goals")
+	workspaceCollection := client.Database("golangdb").Collection("workspaces")
 
 	// todorepos
 	todoRepo := repository.NewTodoRepository(todoCollection)
@@ -56,6 +57,10 @@ func Run() error {
 	goalService := service.NewGoalService(goalRepo)
 	goalHandler := handler.NewGoalHandler(goalService)
 
-	srv := server.NewServer(todoHandler, userHandler, goalHandler)
+	workspaceRepo := repository.NewWorkspaceRepository(workspaceCollection)
+	workspaceService := service.NewWorkSpaceService(workspaceRepo)
+	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+
+	srv := server.NewServer(todoHandler, userHandler, goalHandler, workspaceHandler)
 	return srv.Start(cfg.Port)
 }

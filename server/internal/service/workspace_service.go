@@ -9,7 +9,7 @@ import (
 )
 
 type WorkspaceService interface {
-	GetAllUserWorkspaces(ctx context.Context, userId string) ([]model.Workspace, error)
+	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
 }
 
 type workspaceService struct {
@@ -22,4 +22,10 @@ func (s *workspaceService) GetAllUserWorkspace(ctx context.Context, userId strin
 	}
 
 	return s.repo.GetAllUserWorkspace(ctx, userId)
+}
+
+func NewWorkSpaceService(repo repository.WorkSpaceRepository) WorkspaceService {
+	return &workspaceService{
+		repo: repo,
+	}
 }
