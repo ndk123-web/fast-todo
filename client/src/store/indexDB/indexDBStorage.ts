@@ -15,10 +15,15 @@ export async function getDB() {
   });
 }
 
+// Generic functions to interact with IndexedDB
+// On App Render getIteme is called to get the data from IndexDB by zustand persist middleware
 export async function getItem<T>(key: string): Promise<T | undefined> {
   try {
+    // Get the DB instance
     const db = await getDB();
+    // Get the item from the store
     const result = await db.get(STORE_NAME, key);
+    // Return the result
     return result;
   } catch (error) {
     console.error("Error getting item from IndexedDB:", error);
@@ -26,15 +31,21 @@ export async function getItem<T>(key: string): Promise<T | undefined> {
   }
 }
 
+// Set an item in the IndexedDB store
+// whenever we do any changes related to set / update of the store this function is called by zustand persist middleware
 export async function setItem<T>(key: string, value: T): Promise<void> {
   try {
     const db = await getDB();
+    // Put the item in the store 
+    // if already exists it updates else creates new
     await db.put(STORE_NAME, value, key);
   } catch (error) {
     console.error("Error setting item in IndexedDB:", error);
   }
 }
 
+// Delete an item from the IndexedDB store
+// when we delete the store this function is called by zustand persist middleware
 export async function deleteItem(key: string): Promise<void> {
   const db = await getDB();
   await db.delete(STORE_NAME, key);

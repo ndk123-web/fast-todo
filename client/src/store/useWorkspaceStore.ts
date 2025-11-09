@@ -23,35 +23,52 @@ interface WorkspaceState {
   initializeDefaultWorkspace: () => void;
 }
 
+// Custom IndexedDB storage implementation for zustand persist middleware
+// persist middleware needs an object with getItem, setItem, removeItem methods for any storage implementation
+// like localStorage, sessionStorage or custom storage like IndexedDB
 const indexedDBStorage: PersistStorage<WorkspaceState> = {
+  // this function is called by zustand persist middleware to get the data from IndexedDB
+  // we use the getItem , setItem, deleteItem functions defined in indexDBStorage.ts which interacts with IndexedDB
+
+  // Custom storage implementation for IndexedDB
   getItem: async (name) => {
     const value = await getItem<string>(name);
     if (!value) return null;
     const parsed = JSON.parse(value);
-    
+
     // Convert Date strings back to Date objects
     if (parsed.state?.workspaces) {
       parsed.state.workspaces = parsed.state.workspaces.map((ws: any) => ({
         ...ws,
-        createdAt: new Date(ws.createdAt)
+        createdAt: new Date(ws.createdAt),
       }));
     }
     if (parsed.state?.currentWorkspace?.createdAt) {
-      parsed.state.currentWorkspace.createdAt = new Date(parsed.state.currentWorkspace.createdAt);
+      parsed.state.currentWorkspace.createdAt = new Date(
+        parsed.state.currentWorkspace.createdAt
+      );
     }
-    
+
+    // returns parse because while setting we stringify the value
     return parsed;
   },
   setItem: async (name, value) => {
+    // stringify the value before storing because IndexedDB works with strings
     await setItem(name, JSON.stringify(value));
   },
   removeItem: async (name) => {
+    // delete the item from IndexedDB store
     await deleteItem(name);
   },
 };
 
 const useWorkspaceStore = create<WorkspaceState>()(
+  // persist middleware want an object with getItem, setItem, removeItem methods for custom storage
+  // persit take ({}) object for state and actions and {} configuration object for storage and name
+  // ({}) is object literal which only return object of state and actions as 1st argument
+  // persist is higher order function which takes function which returns object of state and actions as 1st argument
   persist(
+    // this is a function which returns object of state and actions
     (set, get) => ({
       workspaces: [],
       currentWorkspace: null,
@@ -122,6 +139,9 @@ const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
     }),
+
+    // Persist configuration
+    // persist wants a storage object with getItem, setItem, removeItem methods
     {
       name: "workspace-storage",
       storage: indexedDBStorage,
