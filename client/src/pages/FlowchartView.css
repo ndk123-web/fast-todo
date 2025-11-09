@@ -24,6 +24,13 @@
   align-items: center;
 }
 
+/* Header Left Section - Group logo and workspace together */
+.flowchart-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 /* Logo - Fixed gradient display */
 .flowchart-logo {
   display: flex;
@@ -40,10 +47,6 @@
   transition: all 0.3s ease;
 }
 
-.flowchart-logo:hover {
-  transform: scale(1.05);
-}
-
 .flowchart-logo-icon {
   font-size: 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -53,22 +56,29 @@
   filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.5));
 }
 
-/* Workspace Display in Header */
+/* Workspace Display in Header - Enhanced visibility */
 .flowchart-workspace-display {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  transition: all 0.3s ease;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(102, 126, 234, 0.3);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 12px rgba(102, 126, 234, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .flowchart-workspace-display:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 
+    0 6px 20px rgba(102, 126, 234, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .flowchart-workspace-display svg {
@@ -194,114 +204,124 @@
   position: relative;
 }
 
-/* Custom Node Styling - Professional glass-morphism design */
+/* Custom Node Styling - Clean and Professional */
 .custom-node {
-  padding: 0;
-  width: 300px;
-  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(102, 126, 234, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.25s ease;
+  font-family: 'Space Grotesk', sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .custom-node:hover {
-  border-color: rgba(102, 126, 234, 0.4);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(102, 126, 234, 0.3),
-    0 0 60px rgba(102, 126, 234, 0.2);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
 }
 
-.node-header {
+.custom-node.completed {
+  opacity: 0.65;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(102, 126, 234, 0.02) 100%);
+}
+
+.custom-node.completed .node-content {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Node Main Section - Checkbox + Content */
+.node-main {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
-  border-radius: 15px 15px 0 0;
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'Space Grotesk', sans-serif;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
-.node-header.priority-high {
-  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-}
-
-.node-header.priority-medium {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.node-header.priority-low {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.node-priority {
-  color: #ffffff;
-  font-weight: 800;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  font-size: 0.95rem;
-}
-
-.node-toggle-btn {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  padding: 6px 8px;
+/* Custom Checkbox Button */
+.node-checkbox {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(102, 126, 234, 0.4);
+  background: rgba(102, 126, 234, 0.08);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  color: transparent;
+  font-size: 13px;
+  font-weight: 900;
 }
 
-.node-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.6);
-  transform: scale(1.15);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
-}
-
-.node-toggle-btn:active {
+.node-checkbox:hover {
+  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(102, 126, 234, 0.15);
   transform: scale(1.05);
 }
 
-.node-toggle-btn svg {
-  display: block;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+.custom-node.completed .node-checkbox {
+  border-color: #10b981;
+  background: #10b981;
+  color: white;
 }
 
-.node-check {
-  color: #10b981;
-  font-size: 1rem;
+.node-checkbox span {
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Node Content Text */
 .node-content {
-  padding: 1.25rem 1.5rem;
+  flex: 1;
   color: rgba(255, 255, 255, 0.95);
-  font-size: 0.99rem;
-  line-height: 1.6;
-  min-height: 70px;
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.02);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 0 0 15px 15px;
+  font-size: 15px;
+  line-height: 1.5;
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Priority Badge - Right side */
+.node-priority {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Space Grotesk', sans-serif;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.node-priority.priority-high {
+  background: rgba(220, 38, 38, 0.1);
+  color: #fca5a5;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.node-priority.priority-medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.node-priority.priority-low {
+  background: rgba(59, 130, 246, 0.1);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 /* Help Toggle Button */

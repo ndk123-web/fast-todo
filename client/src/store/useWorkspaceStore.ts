@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getItem, setItem, deleteItem } from "./indexDB/indexDBStorage";
 import type { PersistStorage } from "zustand/middleware";
+// import type { Todo } from "./useUserTodos";
 
 export interface Workspace {
   id: string;
@@ -13,6 +14,9 @@ export interface Workspace {
 
 interface WorkspaceState {
   workspaces: Workspace[];
+
+  // workspaces: Workspace {id , worskspaceName , todos: Todo[] , goals: Goal[], edges: Edge[]}
+  // each workspace will have id , name , todos, goals, edges (for flowchart)
   currentWorkspace: Workspace | null;
 
   // Actions
@@ -61,6 +65,20 @@ const indexedDBStorage: PersistStorage<WorkspaceState> = {
     await deleteItem(name);
   },
 };
+
+// how internally zustand persist middleware works structure
+/*
+function persist(fn,config){
+    console.log("Fn",fn)
+    data = fn()
+    console.log("Fn that has all variables datas\n",data)
+    console.log("storage configs: ",config)
+}
+
+persist((set,get) => ({count: 0, incr: (count)=>count+1}),
+{name:"key" , storage:"indexedDB"})
+
+*/
 
 const useWorkspaceStore = create<WorkspaceState>()(
   // persist middleware want an object with getItem, setItem, removeItem methods for custom storage

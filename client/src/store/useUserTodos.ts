@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface Todo {
+export interface Todo {
   id: number;
   task: string;
   done: boolean;

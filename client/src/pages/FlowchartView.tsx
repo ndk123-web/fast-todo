@@ -28,12 +28,12 @@ interface Todo {
 
 const FlowchartView = () => {
   const navigate = useNavigate();
-  const { currentWorkspace, initializeDefaultWorkspace } = useWorkspaceStore();
+  const { currentWorkspace } = useWorkspaceStore();
   
   // Initialize default workspace on mount
-  useEffect(() => {
-    initializeDefaultWorkspace();
-  }, [initializeDefaultWorkspace]);
+  // useEffect(() => {
+  //   initializeDefaultWorkspace();
+  // }, [initializeDefaultWorkspace]);
   
   // Help panel toggle state
   const [showHelp, setShowHelp] = useState(false);
@@ -46,7 +46,7 @@ const FlowchartView = () => {
     { id: 1, text: 'Complete project documentation', completed: true, priority: 'high' },
     { id: 2, text: 'Review pull requests', completed: false, priority: 'medium' },
     { id: 3, text: 'Team meeting at 3 PM', completed: false, priority: 'high' },
-    { id: 4, text: 'Update portfolio website', completed: false, priority: 'low' },
+    { id: 4, text: 'Update portfolio website anda', completed: false, priority: 'low' },
     { id: 5, text: 'Morning workout', completed: true, priority: 'medium' },
   ]);
 
@@ -66,35 +66,31 @@ const FlowchartView = () => {
     position: { x: 250, y: index * 120 }, // Vertical layout
     data: { 
       label: (
-        <div className="custom-node">
-          <div className={`node-header priority-${todo.priority}`}>
-            <span className="node-priority">{todo.priority}</span>
+        <div className={`custom-node ${todo.completed ? 'completed' : ''}`}>
+          <div className="node-main">
             <button 
-              className="node-toggle-btn"
+              className="node-checkbox"
               onClick={() => toggleTodoCompleted(todo.id)}
               title={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
             >
-              {todo.completed ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8L7 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-              )}
+              {todo.completed && <span>✓</span>}
             </button>
+            <div className="node-content">{todo.text}</div>
           </div>
-          <div className="node-content">{todo.text}</div>
+          <span className={`node-priority priority-${todo.priority}`}>
+            {todo.priority}
+          </span>
         </div>
       )
     },
     style: {
-      background: 'transparent',
-      border: 'none',
+      background: 'rgba(255, 255, 255, 0.04)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
       borderRadius: '16px',
-      padding: 0,
-      width: 280,
+      padding: '18px 20px',
+      width: 320,
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
     },
     // Enable connection handles on all 4 sides (top, right, bottom, left)
     sourcePosition: 'right' as any,
@@ -123,43 +119,43 @@ const FlowchartView = () => {
       position: nodes.find(n => n.id === `todo-${todo.id}`)?.position || { x: 250, y: index * 120 },
       data: { 
         label: (
-          <div className="custom-node">
-            <div className={`node-header priority-${todo.priority}`}>
-              <span className="node-priority">{todo.priority}</span>
+          <div className={`custom-node ${todo.completed ? 'completed' : ''}`}>
+            <div className="node-main">
               <button 
-                className="node-toggle-btn"
+                className="node-checkbox"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleTodoCompleted(todo.id);
                 }}
                 title={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
               >
-                {todo.completed ? (
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                    <path d="M16.6667 5L7.50004 14.1667L3.33337 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                    <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="2.5"/>
-                  </svg>
-                )}
+                {todo.completed && <span>✓</span>}
               </button>
+              <div className="node-content">{todo.text}</div>
             </div>
-            <div className="node-content">{todo.text}</div>
+            <span className={`node-priority priority-${todo.priority}`}>
+              {todo.priority}
+            </span>
           </div>
         )
       },
       style: {
-        background: 'transparent',
-        border: 'none',
+        background: 'rgba(255, 255, 255, 0.04)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: '16px',
-        padding: 0,
-        width: 300,
+        padding: '18px 20px',
+        width: 320,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
       },
       sourcePosition: 'right' as any,
       targetPosition: 'left' as any,
     }));
     setNodes(updatedNodes);
+
+    // for debugging 
+    console.log("Debug Nodes: ", nodes);
+    console.log("Debug Edges: ", edges)
   }, [todos, setNodes]);
 
   // Handle new connections when user drags from one node to another
@@ -183,19 +179,21 @@ const FlowchartView = () => {
       {/* Header - same style as Dashboard */}
       <header className="flowchart-header">
         <div className="flowchart-header-content">
-          <Link to="/" className="flowchart-logo">
-            <span className="flowchart-logo-icon">⚡</span>
-            TaskPlexus
-          </Link>
-          
-          {/* Current Workspace Display */}
-          <div className="flowchart-workspace-display">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M2.25 5.25C2.25 4.83579 2.41462 4.43855 2.70765 4.14549C3.00067 3.85243 3.39782 3.6875 3.8125 3.6875H6.75L8.25 6H14.1875C14.6022 6 14.9994 6.16462 15.2924 6.45765C15.5855 6.75067 15.75 7.14782 15.75 7.5625V12.75C15.75 13.1647 15.5855 13.5619 15.2924 13.8549C14.9994 14.148 14.6022 14.3125 14.1875 14.3125H3.8125C3.39782 14.3125 3.00067 14.148 2.70765 13.8549C2.41462 13.5619 2.25 13.1647 2.25 12.75V5.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="flowchart-workspace-info">
-              <span className="flowchart-workspace-label">Workspace</span>
-              <span className="flowchart-workspace-name">{currentWorkspace?.name || 'Personal'}</span>
+          <div className="flowchart-header-left">
+            <Link to="/" className="flowchart-logo">
+              <span className="flowchart-logo-icon">⚡</span>
+              TaskPlexus
+            </Link>
+            
+            {/* Current Workspace Display */}
+            <div className="flowchart-workspace-display">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2.25 5.25C2.25 4.83579 2.41462 4.43855 2.70765 4.14549C3.00067 3.85243 3.39782 3.6875 3.8125 3.6875H6.75L8.25 6H14.1875C14.6022 6 14.9994 6.16462 15.2924 6.45765C15.5855 6.75067 15.75 7.14782 15.75 7.5625V12.75C15.75 13.1647 15.5855 13.5619 15.2924 13.8549C14.9994 14.148 14.6022 14.3125 14.1875 14.3125H3.8125C3.39782 14.3125 3.00067 14.148 2.70765 13.8549C2.41462 13.5619 2.25 13.1647 2.25 12.75V5.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div className="flowchart-workspace-info">
+                <span className="flowchart-workspace-label">Workspace</span>
+                <span className="flowchart-workspace-name">{currentWorkspace?.name || 'Personal'}</span>
+              </div>
             </div>
           </div>
           
@@ -269,7 +267,7 @@ const FlowchartView = () => {
           {/* Mini overview map - toggleable */}
           {showMiniMap && (
             <MiniMap 
-              nodeColor={(node) => '#667eea'}
+              nodeColor={() => '#667eea'}
               maskColor="rgba(15, 15, 30, 0.8)"
               style={{
                 background: 'rgba(15, 15, 30, 0.8)',

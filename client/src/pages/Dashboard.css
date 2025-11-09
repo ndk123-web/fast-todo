@@ -1,6 +1,7 @@
 .dashboard-container {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%);
+  background-attachment: fixed;
   color: white;
   position: relative;
   overflow-x: hidden;
