@@ -518,7 +518,8 @@ const Dashboard = () => {
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <path d="M2 4.66667C2 4.31304 2.14048 3.97391 2.39052 3.72386C2.64057 3.47381 2.97971 3.33333 3.33333 3.33333H6L7.33333 5.33333H12.6667C13.0203 5.33333 13.3594 5.47381 13.6095 5.72386C13.8595 5.97391 14 6.31304 14 6.66667V11.3333C14 11.687 13.8595 12.0261 13.6095 12.2761C13.3594 12.5262 13.0203 12.6667 12.6667 12.6667H3.33333C2.97971 12.6667 2.64057 12.5262 2.39052 12.2761C2.14048 12.0261 2 11.687 2 11.3333V4.66667Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <span className="workspace-name-text">{workspace.name}</span>
+                          {/* Name could be long because we cant trust users for destroying the app */}
+                          <span className="workspace-name-text">{workspace.name.substring(0,15)}</span>
                           {workspace.isDefault && <span className="workspace-badge">Default</span>}
                         </button>
                         {!workspace.isDefault && (
@@ -644,7 +645,7 @@ const Dashboard = () => {
               </svg>
               <div className="current-workspace-info">
                 <span className="current-workspace-label">Workspace</span>
-                <span className="current-workspace-name">{currentWorkspace?.name || 'Personal'}</span>
+                <span className="current-workspace-name">{currentWorkspace?.name.substring(0,15) || 'Personal'}</span>
               </div>
             </div>
           </div>
