@@ -14,6 +14,7 @@ type WorkspaceHandler interface {
 	GetAllUserWorkspace(w http.ResponseWriter, r *http.Request)
 	CreateWorkspace(w http.ResponseWriter, r *http.Request)
 	UpdateWorkspace(w http.ResponseWriter, r *http.Request)
+	DeleteWorkspace(w http.ResponseWriter, r *http.Request)
 }
 
 type workspaceHandler struct {
@@ -94,12 +95,46 @@ func (h *workspaceHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.service.UpdatedWorkspace(context.Background(), updateBody.UserId, updateBody.WorkspaceName,updateBody.UpdatedWorkspaceName)
+	err = h.service.UpdatedWorkspace(context.Background(), updateBody.UserId, updateBody.WorkspaceName, updateBody.UpdatedWorkspaceName)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
 		return
 	}
 
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
+}
+
+type deleteReqBody struct {
+	UserId        string `json:"userId"`
+	WorkspaceName string `json:"workspaceName"`
+}
+
+func (h *workspaceHandler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
+
+	// parse the body
+	var deleteBody deleteReqBody
+
+	// decode the body to struct deleteReqBody of var deleteBody
+	if err := json.NewDecoder(r.Body).Decode(&deleteBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	// validate
+	if deleteBody.UserId == "" || deleteBody.WorkspaceName == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "UserId / Workspace Name is Empty"})
+		return
+	}
+
+	// call the service delete method
+	err := h.service.DeleteWorkspace(context.Background(), deleteBody.UserId, deleteBody.WorkspaceName)
+	if err != nil {
+		// error response
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	// success response
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
 }
 

@@ -12,20 +12,27 @@ import (
 	"time"
 )
 
+// WorkSpaceRepository interface
 type WorkSpaceRepository interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
 	CreateWorkspace(ctx context.Context, userId string, workspaceName string) error
 	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
+	DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error
 }
 
+// workspaceRepository struct
 type workspaceRepository struct {
 	workspaceCollection *mongo.Collection
 }
 
+// GetAllUserWorkspace gets all workspaces for a user
 func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error) {
+	
+	// validate userId
 	if userId == "" {
 		return nil, errors.New("UserId in Repo is Empty")
 	}
+	
 	// convert userId -> oid
 	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
@@ -140,6 +147,34 @@ func (r *workspaceRepository) UpdatedWorkspace(ctx context.Context, userId strin
 	fmt.Println("Updated Workspace Count:", res.ModifiedCount)
 
 	// success
+	return nil
+}
+
+func (r *workspaceRepository) DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error {
+	if userId == "" || workspaceName == "" {
+		return errors.New("UserId / Workspace name Empty")
+	}
+
+	// convert userId to oid
+	oid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return err
+	}
+
+	// filter for deletion
+	filter := bson.M{"userId": oid, "workspaceName": workspaceName}
+
+	// perform deletion
+	res, err := r.workspaceCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	// check if any document was deleted
+	if res.DeletedCount == 0 {
+		return errors.New("No workspace found to delete for given userId and workspaceName")
+	}
+
 	return nil
 }
 
