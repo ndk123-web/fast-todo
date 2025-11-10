@@ -13,6 +13,7 @@ import (
 type WorkspaceHandler interface {
 	GetAllUserWorkspace(w http.ResponseWriter, r *http.Request)
 	CreateWorkspace(w http.ResponseWriter, r *http.Request)
+	UpdateWorkspace(w http.ResponseWriter, r *http.Request)
 }
 
 type workspaceHandler struct {
@@ -47,8 +48,8 @@ func (h *workspaceHandler) CreateWorkspace(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if requestBody.WokspaceName == "" {
-		http.Error(w, "Empty Workspace Name", 401)
+	if requestBody.WokspaceName == "" || requestBody.UserId == "" {
+		http.Error(w, "Empty Workspace Name / UserId", 401)
 		return
 	}
 
@@ -66,6 +67,34 @@ func (h *workspaceHandler) CreateWorkspace(w http.ResponseWriter, r *http.Reques
 	fmt.Println("User Email in Create Workspace: ", userEmail)
 
 	err := h.service.CreateWorkspace(context.Background(), requestBody.UserId, requestBody.WokspaceName)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
+}
+
+type updateReqBody struct {
+	UserId               string `json:"userId"`
+	WorkspaceName        string `json:"workspaceName"`
+	UpdatedWorkspaceName string `json:"updatedWorkspaceName"`
+}
+
+func (h *workspaceHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
+	var updateBody updateReqBody
+	err := json.NewDecoder(r.Body).Decode(&updateBody)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	if updateBody.UserId == "" || updateBody.WorkspaceName == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "UserId / Workspace Name is Empty"})
+		return
+	}
+
+	err = h.service.UpdatedWorkspace(context.Background(), updateBody.UserId, updateBody.WorkspaceName,updateBody.UpdatedWorkspaceName)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
 		return

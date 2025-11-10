@@ -11,6 +11,7 @@ import (
 type WorkspaceService interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
 	CreateWorkspace(ctx context.Context, userId string, workspaceName string) error
+	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
 }
 
 type workspaceService struct {
@@ -31,6 +32,18 @@ func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, w
 	}
 
 	return s.repo.CreateWorkspace(ctx, userId, workspaceName)
+}
+
+func (s *workspaceService) UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error {
+	if userId == "" || workspaceName == "" {
+		return errors.New("UserId / workspace name empty in Service")
+	}
+
+	if err := s.repo.UpdatedWorkspace(ctx, userId, workspaceName,updatedWorkspace); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewWorkSpaceService(repo repository.WorkSpaceRepository) WorkspaceService {
