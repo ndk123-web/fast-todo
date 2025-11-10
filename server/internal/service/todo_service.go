@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"github.com/ndk123-web/fast-todo/internal/repository"
@@ -11,9 +12,10 @@ import (
 // TodoService defines the interface for todo business logic operations
 type TodoService interface {
 	GetTodos(ctx context.Context) ([]model.Todo, error)
-	CreateTodo(ctx context.Context, todo model.Todo) (model.Todo, error)
+	CreateTodo(ctx context.Context, todo model.Todo, workspaceId string, userId string) (model.Todo, error)
 	UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error)
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
+	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
 }
 
 // todoService implements TodoService with a repository layer dependency
@@ -32,8 +34,8 @@ func (s *todoService) GetTodos(ctx context.Context) ([]model.Todo, error) {
 }
 
 // CreateTodo adds a new todo item through the repository
-func (s *todoService) CreateTodo(ctx context.Context, todo model.Todo) (model.Todo, error) {
-	return s.repo.CreateTodo(ctx, todo)
+func (s *todoService) CreateTodo(ctx context.Context, todo model.Todo, workspaceId string, userId string) (model.Todo, error) {
+	return s.repo.CreateTodo(ctx, todo, workspaceId, userId)
 }
 
 // UpdateTodo modifies an existing todo's task through the repository
@@ -45,4 +47,19 @@ func (s *todoService) UpdateTodo(ctx context.Context, todoId string, updatedTask
 // Returns true if deletion was successful, false otherwise
 func (s *todoService) DeleteTodo(ctx context.Context, todoId string) (bool, error) {
 	return s.repo.DeleteTodo(ctx, todoId)
+}
+
+func (s *todoService) GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error) {
+	if workspaceId == "" || userId == "" {
+		return nil, errors.New("Workspace ID / UserId is empty in service")
+	}
+
+	var todos []model.Todo
+	todos, err := s.repo.GetSpecificTodo(ctx, workspaceId, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return todos, nil
 }

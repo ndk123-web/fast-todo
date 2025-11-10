@@ -8,12 +8,12 @@ type Todo struct {
 	Task string             `bson:"task,omitempty" json:"task,omitempty"`
 
 	// This is Foreign Key / ref to User
-	UserId primitive.ObjectID `bson:"userId,omitempty" json:"userId,omitempty"`
+	UserId      primitive.ObjectID `bson:"userId,omitempty" json:"userId,omitempty"`
+	WorkspaceId primitive.ObjectID `bson:"workspaceId,omitempty" json:"workspaceId,omitempty"`
 
 	Priority string `bson:"priority" json:"priority"`
 
 	// why not omitempty
 	// because if false then it wont show in json / bson response
-	Done        bool               `bson:"done" json:"done"`
-	WorkspaceId primitive.ObjectID `bson:"worspaceId" json:"worspaceId"`
+	Done bool `bson:"done" json:"done"`
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/ndk123-web/fast-todo/internal/middleware"
 	"github.com/ndk123-web/fast-todo/internal/model"
@@ -18,6 +19,7 @@ type TodoHandler interface {
 	CreateTodo(w http.ResponseWriter, r *http.Request)
 	UpdateTodo(w http.ResponseWriter, r *http.Request)
 	DeleteTodo(w http.ResponseWriter, r *http.Request)
+	GetSpecificTodo(w http.ResponseWriter, r *http.Request)
 }
 
 // todoHandler implements TodoHandler with a service layer dependency
@@ -54,8 +56,28 @@ func (h *todoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 // Expects a JSON payload with todo details
 // Returns the created todo or an error message
 func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
-	var todo model.Todo
 
+	// Regex Based to get userId and workspaceID
+	var todoPath = regexp.MustCompile(`^/api/v1/users/([0-9a-zA-Z\-]+)/create-todo/([0-9a-zA-Z\-]+)$`)
+	matchers := todoPath.FindStringSubmatch(r.URL.Path)
+
+	userId := matchers[1]
+	workspaceId := matchers[2]
+
+	
+	// userId := r.PathValue("userId")
+	// workspaceId := r.PathValue("workspaceID")
+
+	// debug
+	fmt.Println("User ID:", userId)
+	fmt.Println("Workspace ID:", workspaceId)
+
+	if userId == "" || workspaceId == "" {
+		http.Error(w, "UserId / WorkspaceID is empty", http.StatusUnauthorized)
+		return
+	}
+
+	var todo model.Todo
 	err := json.NewDecoder(r.Body).Decode(&todo)
 
 	if err != nil {
@@ -64,7 +86,7 @@ func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Body: ", r.Body)
 
-	todores, todoerr := h.service.CreateTodo(context.Background(), todo)
+	todores, todoerr := h.service.CreateTodo(context.Background(), todo, workspaceId, userId)
 
 	if todoerr != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": todoerr.Error()})
@@ -123,4 +145,28 @@ func (h *todoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"Success": "True"})
+}
+
+func (h *todoHandler) GetSpecificTodo(w http.ResponseWriter, r *http.Request) {
+	var todoPath = regexp.MustCompile(`^/api/v1/users/([0-9a-zA-Z\-]+)/get-specific-todo/([0-9a-zA-Z\-]+)$`)
+	matchers := todoPath.FindStringSubmatch(r.URL.Path)
+
+	if len(matchers) < 3 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	userId := matchers[1]
+	workspaceId := matchers[2]
+
+	fmt.Println("User ID:", userId)
+	fmt.Println("Workspace ID:", workspaceId)
+
+	todo, err := h.service.GetSpecificTodo(context.Background(), workspaceId, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{"response": todo})
 }

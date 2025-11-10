@@ -33,7 +33,7 @@ func (s *Server) Start(port string) error {
 	mux.Handle("GET /api/v1/todos/all-user-todos", middleware.AuthMiddleware(http.HandlerFunc((s.todoHandler.GetTodos))))
 
 	// we need to add here JWT Middleware
-	mux.HandleFunc("POST /api/v1/todos/create-todo", s.todoHandler.CreateTodo)
+	mux.Handle("POST /api/v1/users/{userId}/create-todo/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.CreateTodo)))
 	mux.HandleFunc("PUT /api/v1/todos/update-todo", s.todoHandler.UpdateTodo)
 	mux.HandleFunc("DELETE /api/v1/todos/delete-todo", s.todoHandler.DeleteTodo)
 

@@ -13,9 +13,10 @@ import (
 
 type TodoRepository interface {
 	GetAll(ctx context.Context) ([]model.Todo, error)
-	CreateTodo(ctx context.Context, todo model.Todo) (model.Todo, error)
+	CreateTodo(ctx context.Context, todo model.Todo, workspaceId string, userId string) (model.Todo, error)
 	UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error)
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
+	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
 }
 
 // todoRepo implements TodoRepository with MongoDB as the data store
@@ -34,17 +35,17 @@ func (r *todoRepo) GetAll(ctx context.Context) ([]model.Todo, error) {
 	// in the end close the curson
 	defer cursor.Close(ctx)
 
-	// result will be here 
+	// result will be here
 	var todos []model.Todo
 
-	// loop over the response 
+	// loop over the response
 	for cursor.Next(ctx) {
 		var todo model.Todo
 		if err := cursor.Decode(&todo); err != nil {
 			return nil, err
 		}
 
-		// append todos 
+		// append todos
 		todos = append(todos, todo)
 	}
 
@@ -52,10 +53,23 @@ func (r *todoRepo) GetAll(ctx context.Context) ([]model.Todo, error) {
 }
 
 // CreateTodo adds a new todo item to the database
-func (r *todoRepo) CreateTodo(ctx context.Context, todo model.Todo) (model.Todo, error) {
+func (r *todoRepo) CreateTodo(ctx context.Context, todo model.Todo, workspaceId string, userId string) (model.Todo, error) {
 	if todo.Task == "" {
 		return model.Todo{}, errors.New("Task is Invalid / Empty")
 	}
+
+	// string -> object Id
+	workspaceOid, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return model.Todo{}, err
+	}
+	userOid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return model.Todo{}, err
+	}
+
+	todo.WorkspaceId = workspaceOid
+	todo.UserId = userOid
 
 	insertedId, err := r.collection.InsertOne(ctx, todo)
 	if err != nil {
@@ -119,6 +133,42 @@ func (r *todoRepo) DeleteTodo(ctx context.Context, todoId string) (bool, error) 
 	}
 
 	return true, nil
+}
+
+func (r *todoRepo) GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error) {
+	// convert workspaceId and UserId into object
+	workspaceOid, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	userOid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// filter the documents
+	filter := bson.M{"workspaceId": workspaceOid, "userId": userOid}
+	cursor, err := r.collection.Find(ctx, filter)
+
+	// otherwise cursor remains open and can cause memory leaks
+	defer cursor.Close(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// get into the todos
+	var todos []model.Todo
+	for cursor.Next(ctx) {
+		var todo model.Todo
+		if err := cursor.Decode(&todo); err != nil {
+			return nil, err
+		}
+		todos = append(todos, todo)
+	}
+
+	// return todos and nil as no error
+	return todos, nil
 }
 
 // NewTodoRepository creates and returns a new instance of TodoRepository
