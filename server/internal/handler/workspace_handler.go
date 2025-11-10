@@ -3,14 +3,16 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-
+	"fmt"
+	"github.com/ndk123-web/fast-todo/internal/middleware"
 	"github.com/ndk123-web/fast-todo/internal/repository"
 	"github.com/ndk123-web/fast-todo/internal/service"
+	"net/http"
 )
 
 type WorkspaceHandler interface {
 	GetAllUserWorkspace(w http.ResponseWriter, r *http.Request)
+	CreateWorkspace(w http.ResponseWriter, r *http.Request)
 }
 
 type workspaceHandler struct {
@@ -33,8 +35,46 @@ func (h *workspaceHandler) GetAllUserWorkspace(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(map[string]any{"response": workspaces})
 }
 
+type createWorkspaceStruct struct {
+	WokspaceName string `json:"workspaceName"`
+	UserId       string `json:"userId"`
+}
 
-// New Workspace Handler 
+func (h *workspaceHandler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
+	var requestBody createWorkspaceStruct
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	if requestBody.WokspaceName == "" {
+		http.Error(w, "Empty Workspace Name", 401)
+		return
+	}
+
+	// get the context
+	ctx := r.Context()
+
+	// get the value from ctx
+	userEmail, ok := ctx.Value(middleware.UserEmailKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized Email Not Found", 401)
+		return
+	}
+
+	// debug
+	fmt.Println("User Email in Create Workspace: ", userEmail)
+
+	err := h.service.CreateWorkspace(context.Background(), requestBody.UserId, requestBody.WokspaceName)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
+}
+
+// New Workspace Handler
 func NewWorkspaceHandler(service repository.WorkSpaceRepository) WorkspaceHandler {
 	return &workspaceHandler{
 		service: service,

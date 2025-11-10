@@ -52,6 +52,7 @@ func (s *Server) Start(port string) error {
 
 	// workspace Routes (Need Auth Middleware)
 	mux.Handle("GET /api/v1/workspaces/get-user-workspaces", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.GetAllUserWorkspace)))
+	mux.Handle("POST /api/v1/workspaces/create-workspace", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.CreateWorkspace)))
 
 	// it means cors -> log -> actual handler(mux)
 	// global logging and cors middleware

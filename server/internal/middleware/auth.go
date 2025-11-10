@@ -17,6 +17,7 @@ var JwtSecret = []byte(os.Getenv("JWT_SECRET"))
 type contextKey string
 
 const UserEmailKey contextKey = "userEmail"
+const UserId contextKey = "userId"
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,6 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		//  Inject email into context
 		ctx := context.WithValue(r.Context(), UserEmailKey, userEmail)
-
 		//  Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

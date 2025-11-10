@@ -10,6 +10,7 @@ import (
 
 type WorkspaceService interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
+	CreateWorkspace(ctx context.Context, userId string, workspaceName string) error
 }
 
 type workspaceService struct {
@@ -22,6 +23,14 @@ func (s *workspaceService) GetAllUserWorkspace(ctx context.Context, userId strin
 	}
 
 	return s.repo.GetAllUserWorkspace(ctx, userId)
+}
+
+func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, workspaceName string) error {
+	if userId == "" || workspaceName == "" {
+		return errors.New("UserEmail or workspaceName is Empty")
+	}
+
+	return s.repo.CreateWorkspace(ctx, userId, workspaceName)
 }
 
 func NewWorkSpaceService(repo repository.WorkSpaceRepository) WorkspaceService {
