@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useUserStore from '../store/useUserInfo';
 import useWorkspaceStore from '../store/useWorkspaceStore';
+import TrelloLogo from '../components/TrelloLogo';
 import './Dashboard.css';
 
 // Todo interface - defines structure for task items
@@ -335,7 +336,7 @@ const Dashboard = () => {
     return (
       <div className="dashboard-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ textAlign: 'center', color: 'white' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚡</div>
+          <div style={{ marginBottom: '20px' }}><TrelloLogo size={60} /></div>
           <div style={{ fontSize: '18px', opacity: 0.7 }}>Loading workspace...</div>
         </div>
       </div>
@@ -348,7 +349,7 @@ const Dashboard = () => {
       <aside className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo">
-           {!sidebarCollapsed ? <span className="sidebar-logo-icon">⚡</span> : null}
+           {!sidebarCollapsed ? <TrelloLogo size={28} /> : <TrelloLogo size={24} />}
             {!sidebarCollapsed && <span>TaskPlexus</span>}
           </Link>
           <button 
@@ -623,7 +624,7 @@ const Dashboard = () => {
         <header className="dashboard-top-header">
           <div className="dashboard-top-header-left">
             {/* {/* <div className="dashboard-top-logo">
-              <span className="dashboard-top-logo-icon">⚡</span>
+              <TrelloLogo size={28} />
               <span className="dashboard-top-logo-text">TaskPlexus</span>
             </div> */}
             <div className="dashboard-top-breadcrumb">

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import signInUserApi from '../api/signInUserApi';
 import type { signInResponse } from '../types/signType';
 import useUserStore from '../store/useUserInfo';
+import TrelloLogo from '../components/TrelloLogo';
 import './SignIn.css';
 
 const SignIn = () => {
@@ -32,8 +33,8 @@ const SignIn = () => {
       <nav className="signin-navbar">
         <div className="signin-nav-content">
           <Link to="/" className="signin-nav-logo">
-            <span className="signin-nav-logo-icon">⚡</span>
-            TaskPlexus
+            <TrelloLogo size={28} />
+            <span style={{ marginLeft: '10px' }}>TaskPlexus</span>
           </Link>
           <div className="signin-nav-links">
             <Link to="/" className="signin-nav-link">Home</Link>

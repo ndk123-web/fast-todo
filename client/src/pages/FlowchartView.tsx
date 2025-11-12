@@ -17,6 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import './FlowchartView.css';
 import useWorkspaceStore from '../store/useWorkspaceStore';
+import TrelloLogo from '../components/TrelloLogo';
 
 // Todo interface - same as Dashboard
 interface Todo {
@@ -181,8 +182,8 @@ const FlowchartView = () => {
         <div className="flowchart-header-content">
           <div className="flowchart-header-left">
             <Link to="/" className="flowchart-logo">
-              <span className="flowchart-logo-icon">⚡</span>
-              TaskPlexus
+              <TrelloLogo size={28} />
+              <span style={{ marginLeft: '10px' }}>TaskPlexus</span>
             </Link>
             
             {/* Current Workspace Display */}

@@ -1,14 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import useUserStore from '../store/useUserInfo';
-import dotenv from 'dotenv';
+import TrelloLogo from '../components/TrelloLogo';
 import './Home.css';
 
 const Home = () => {
-
-  // Load environment variables
-  dotenv.config();
-
   let userInfo = useUserStore(state => state.userInfo);
 
   return (
@@ -16,8 +12,8 @@ const Home = () => {
       <nav className="navbar">
         <div className="nav-content">
           <h1 className="nav-logo">
-            <span className="nav-logo-icon">⚡</span>
-            TaskPlexus
+            <TrelloLogo size={32} />
+            <span style={{ marginLeft: '12px' }}>TaskPlexus</span>
           </h1>
           <div className="nav-links">
             <Link to="/signin" className="nav-link">Sign In</Link>
@@ -108,7 +104,7 @@ const Home = () => {
       <section className="features-section">
         <div className="features-grid">
           <div className="feature-card">
-            <div className="feature-icon">⚡</div>
+            <div className="feature-icon"><TrelloLogo size={40} /></div>
             <h3 className="feature-title">Lightning Fast</h3>
             <p className="feature-description">
               Instantly add, edit, and complete tasks without any lag or delays
