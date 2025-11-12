@@ -9,19 +9,19 @@ import (
 )
 
 type GoalService interface {
-	GetUserGoals(ctx context.Context, userId string) ([]model.Goals, error)
+	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 }
 
 type goalService struct {
 	repo repository.GoalRepository
 }
 
-func (s *goalService) GetUserGoals(ctx context.Context, userId string) ([]model.Goals, error) {
-	if userId == "" {
-		return nil, errors.New("UserId is Empty")
+func (s *goalService) GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error) {
+	if userId == "" || workspaceId == "" {
+		return nil, errors.New("UserId / WorkspaceID is Empty in Service")
 	}
 
-	return s.repo.GetUserGoals(ctx, userId)
+	return s.repo.GetUserGoals(ctx, userId, workspaceId)
 }
 
 func NewGoalService(repo repository.GoalRepository) GoalService {

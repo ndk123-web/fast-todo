@@ -33,14 +33,12 @@ func (s *Server) Start(port string) error {
 	mux.Handle("GET /api/v1/todos/all-user-todos", middleware.AuthMiddleware(http.HandlerFunc((s.todoHandler.GetTodos))))
 
 	// we need to add here JWT Middleware
-	mux.Handle("POST /api/v1/users/{userId}/create-todo/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.CreateTodo)))
-	mux.HandleFunc("PUT /api/v1/todos/update-todo", s.todoHandler.UpdateTodo)
-	mux.HandleFunc("DELETE /api/v1/todos/delete-todo", s.todoHandler.DeleteTodo)
+	mux.Handle("POST /api/v1/users/{userId}/create-todo/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.CreateTodo))) // using workspaceId and UserId can add the todo
+	mux.Handle("PUT /api/v1/todos/update-todo", middleware.AuthMiddleware((http.HandlerFunc(s.todoHandler.UpdateTodo))))                       // using ID of todo we can directly can update the todo
+	mux.Handle("DELETE /api/v1/todos/delete-todo", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.DeleteTodo)))                      // using ID of todo we can directly can delte the todo
+	mux.Handle("GET /api/v1/users/{userId}/get-ws-todo/{workspaceID}", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.GetSpecificTodo)))
 
-	// middleware for Get User Todos
-	mux.Handle("GET /api/v1/todos/get-user-todos", middleware.AuthMiddleware(http.HandlerFunc(s.userHandler.GetUserTodos)))
-
-	// No Need Of Middleware
+	// No Need Of Middleware (Signin and Signup)
 	mux.HandleFunc("POST /api/v1/users/signup", s.userHandler.SignUpUser)
 	mux.HandleFunc("POST /api/v1/users/signin", s.userHandler.SignInUser)
 
@@ -48,7 +46,7 @@ func (s *Server) Start(port string) error {
 	mux.HandleFunc("POST /api/v1/user/refresh-token", s.userHandler.RefreshToken)
 
 	// Goals Routes (Need Auth Middleware)
-	mux.Handle("GET /api/v1/users/goals/get-user-goals", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.GetUserGoals)))
+	mux.Handle("GET /api/v1/users/goals/u/{userId}/ws/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.GetUserGoals)))
 
 	// workspace Routes (Need Auth Middleware)
 	mux.Handle("GET /api/v1/workspaces/get-user-workspaces", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.GetAllUserWorkspace)))

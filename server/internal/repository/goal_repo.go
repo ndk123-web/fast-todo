@@ -10,25 +10,32 @@ import (
 )
 
 type GoalRepository interface {
-	GetUserGoals(ctx context.Context, userId string) ([]model.Goals, error)
+	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 }
 
 type goalRepository struct {
 	goalCollection *mongo.Collection
 }
 
-func (r *goalRepository) GetUserGoals(ctx context.Context, userId string) ([]model.Goals, error) {
+func (r *goalRepository) GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error) {
 	var err error
 
 	if userId == "" {
 		return nil, errors.New("UserId is Empty")
 	}
 
-	oid, err := primitive.ObjectIDFromHex(userId)
+	// convert userId and WorkspaceId from string -> ObjectId
+	userOid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		return nil, err
 	}
-	filter := bson.M{"userId": oid}
+	workspaceOid, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	// filter
+	filter := bson.M{"userId": userOid, "workspaceId": workspaceOid}
 
 	cursor, err := r.goalCollection.Find(ctx, filter)
 	if err != nil {

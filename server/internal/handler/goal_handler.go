@@ -16,22 +16,19 @@ type goalHandler struct {
 }
 
 func (h *goalHandler) GetUserGoals(w http.ResponseWriter, r *http.Request) {
-	values := r.URL.Query()
+	userId := r.PathValue("userId")
+	workspaceId := r.PathValue("workspaceId")
 
-	// set the userID when login / signup
-	userId := values.Get("userId")
-
-	if userId == "" {
-		json.NewEncoder(w).Encode(map[string]string{"Error": "UserId is Empty"})
+	if userId == "" || workspaceId == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "UserId / Workspace ID is empty in Handler"})
 		return
 	}
 
-	goals, err := h.service.GetUserGoals(context.Background(), userId)
+	goals, err := h.service.GetUserGoals(context.Background(), userId, workspaceId)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]any{"response": goals})
 }

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 
 	"github.com/ndk123-web/fast-todo/internal/middleware"
 	"github.com/ndk123-web/fast-todo/internal/model"
@@ -100,6 +99,7 @@ func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 type updateTodo struct {
 	ID   string `json:"id"`   // ID of the todo to update
 	Task string `json:"task"` // New task text
+	// WorkspaceId string `json:"workspaceId"`
 }
 
 // UpdateTodo handles HTTP PUT requests to update an existing todo
@@ -147,16 +147,19 @@ func (h *todoHandler) DeleteTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *todoHandler) GetSpecificTodo(w http.ResponseWriter, r *http.Request) {
-	var todoPath = regexp.MustCompile(`^/api/v1/users/([0-9a-zA-Z\-]+)/get-specific-todo/([0-9a-zA-Z\-]+)$`)
-	matchers := todoPath.FindStringSubmatch(r.URL.Path)
+	// var todoPath = regexp.MustCompile(`^/api/v1/users/([0-9a-zA-Z\-]+)/get-specific-todo/([0-9a-zA-Z\-]+)$`)
+	// matchers := todoPath.FindStringSubmatch(r.URL.Path)
 
-	if len(matchers) < 3 {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
-		return
-	}
+	// if len(matchers) < 3 {
+	// 	http.Error(w, "Invalid URL", http.StatusBadRequest)
+	// 	return
+	// }
 
-	userId := matchers[1]
-	workspaceId := matchers[2]
+	// userId := matchers[1]
+	// workspaceId := matchers[2]
+
+	userId := r.PathValue("userId")
+	workspaceId := r.PathValue("workspaceId")
 
 	fmt.Println("User ID:", userId)
 	fmt.Println("Workspace ID:", workspaceId)
