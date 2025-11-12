@@ -48,6 +48,7 @@ func (s *Server) Start(port string) error {
 	// Goals Routes (Need Auth Middleware)
 	mux.Handle("GET /api/v1/goals/u/{userId}/get-gw/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.GetUserGoals)))
 	mux.Handle("POST /api/v1/goals/u/{userId}/create-gw/{workspaceId}", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.CreateUserGoal)))
+	mux.Handle("PUT /api/v1/goals/update-goal/{goalId}", middleware.AuthMiddleware(http.HandlerFunc(s.goalHandler.UpdateUserGoal)))
 
 	// workspace Routes (Need Auth Middleware)
 	mux.Handle("GET /api/v1/workspaces/get-user-workspaces", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.GetAllUserWorkspace)))

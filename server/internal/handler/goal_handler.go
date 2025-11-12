@@ -10,6 +10,7 @@ import (
 type GoalHandler interface {
 	GetUserGoals(w http.ResponseWriter, r *http.Request)
 	CreateUserGoal(w http.ResponseWriter, r *http.Request)
+	UpdateUserGoal(w http.ResponseWriter, r *http.Request)
 }
 
 type goalHandler struct {
@@ -36,7 +37,7 @@ func (h *goalHandler) GetUserGoals(w http.ResponseWriter, r *http.Request) {
 
 type createGoalReqBody struct {
 	GoalName   string `json:"goalName"`
-	TargetDays int64 `json:"targetDays"`
+	TargetDays int64  `json:"targetDays"`
 	Category   string `json:"category"`
 }
 
@@ -57,6 +58,35 @@ func (h *goalHandler) CreateUserGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]any{"response": goal})
+}
+
+type updateGoalBody struct {
+	UpdatedGoalName   string `json:"updatedGoalName"`
+	UpdatedTargetDays int    `json:"updatedTargetDays"`
+	UpdatedCategory   string `json:"updatedCategory"`
+}
+
+func (h *goalHandler) UpdateUserGoal(w http.ResponseWriter, r *http.Request) {
+	var reqBody updateGoalBody
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error()})
+		return
+	}
+
+	if reqBody.UpdatedCategory == "" || reqBody.UpdatedGoalName == "" || reqBody.UpdatedTargetDays == 0 {
+		json.NewEncoder(w).Encode(map[string]any{"Error": "Category/TargetDays/GoalName is Empty"})
+		return
+	}
+
+	goalId := r.PathValue("goalId")
+
+	_, err := h.service.UpdateUserGoal(context.Background(), goalId, reqBody.UpdatedGoalName, reqBody.UpdatedTargetDays, reqBody.UpdatedCategory)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Update Goal"})
 }
 
 func NewGoalHandler(service service.GoalService) GoalHandler {

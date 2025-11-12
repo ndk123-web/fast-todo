@@ -12,6 +12,7 @@ import (
 type GoalRepository interface {
 	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
+	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
 }
 
 type goalRepository struct {
@@ -71,6 +72,7 @@ func (r *goalRepository) CreateUserGoal(ctx context.Context, userId string, work
 	}
 
 	insert := model.Goals{
+		// create the new ObjectId
 		ID:          primitive.NewObjectID(),
 		UserId:      userOid,
 		WorkspaceId: workspaceOid,
@@ -84,11 +86,38 @@ func (r *goalRepository) CreateUserGoal(ctx context.Context, userId string, work
 		return model.Goals{}, err
 	}
 
+	// inject the objectId with response
 	if oid, ok := insertedRes.InsertedID.(primitive.ObjectID); ok {
 		insert.ID = oid
 	}
 
 	return insert, nil
+}
+
+func (r *goalRepository) UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error) {
+	if goalId == "" {
+		return false, errors.New("Goal ID is Empty in Repo")
+	}
+
+	// convert goalId string -> objectId
+	oid, err := primitive.ObjectIDFromHex(goalId)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{"_id": oid}
+	update := bson.M{"$set": bson.M{"title": updatedGoalName, "targetDays": updatedTargetDays, "category": updatedCategory}}
+
+	updated, err := r.goalCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return false, err
+	}
+
+	if updated.MatchedCount == 0 {
+		return false, errors.New("GoalId Document Not Found")
+	}
+
+	return true, nil
 }
 
 func NewGoalRepository(goalCollection *mongo.Collection) GoalRepository {
