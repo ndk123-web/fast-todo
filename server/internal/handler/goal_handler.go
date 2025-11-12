@@ -11,6 +11,7 @@ type GoalHandler interface {
 	GetUserGoals(w http.ResponseWriter, r *http.Request)
 	CreateUserGoal(w http.ResponseWriter, r *http.Request)
 	UpdateUserGoal(w http.ResponseWriter, r *http.Request)
+	DeleteUserGoal(w http.ResponseWriter, r *http.Request)
 }
 
 type goalHandler struct {
@@ -87,6 +88,23 @@ func (h *goalHandler) UpdateUserGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success Update Goal"})
+}
+
+func (h *goalHandler) DeleteUserGoal(w http.ResponseWriter, r *http.Request) {
+	goalIdTobeDelete := r.PathValue("goalId")
+
+	if goalIdTobeDelete == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Goal Id is Empty In Handler"})
+		return
+	}
+
+	isDeleted, err := h.service.DeleteUserGoal(context.Background(), goalIdTobeDelete)
+	if err != nil || !isDeleted {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Delete Goal"})
 }
 
 func NewGoalHandler(service service.GoalService) GoalHandler {

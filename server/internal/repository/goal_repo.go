@@ -13,6 +13,7 @@ type GoalRepository interface {
 	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
+	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
 }
 
 type goalRepository struct {
@@ -115,6 +116,30 @@ func (r *goalRepository) UpdateUserGoal(ctx context.Context, goalId string, upda
 
 	if updated.MatchedCount == 0 {
 		return false, errors.New("GoalId Document Not Found")
+	}
+
+	return true, nil
+}
+
+func (r *goalRepository) DeleteUserGoal(ctx context.Context, goalId string) (bool, error) {
+	if goalId == "" {
+		return false, errors.New("Goal Id is Empty in Repository")
+	}
+
+	// convert string -> ObjectId
+	oid, err := primitive.ObjectIDFromHex(goalId)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{"_id": oid}
+	deletedRes, err := r.goalCollection.DeleteOne(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	if deletedRes.DeletedCount == 0 {
+		return false, errors.New("Documents Not Found")
 	}
 
 	return true, nil

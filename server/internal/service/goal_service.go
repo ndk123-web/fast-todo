@@ -12,6 +12,7 @@ type GoalService interface {
 	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
+	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
 }
 
 type goalService struct {
@@ -40,6 +41,14 @@ func (s *goalService) UpdateUserGoal(ctx context.Context, goalId string, updated
 	}
 
 	return s.repo.UpdateUserGoal(ctx, goalId, updatedGoalName, updatedTargetDays, updatedCategory)
+}
+
+func (s *goalService) DeleteUserGoal(ctx context.Context, goalId string) (bool, error) {
+	if goalId == "" {
+		return false, errors.New("Goal Id is Empty in Service")
+	}
+
+	return s.repo.DeleteUserGoal(ctx, goalId)
 }
 
 func NewGoalService(repo repository.GoalRepository) GoalService {
