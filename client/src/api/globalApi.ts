@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse } from "axios";
+import useUserStore from "../store/useUserInfo";
 
 const originUrl = import.meta.env.VITE_GO_BACKEND_URL;
 
@@ -24,5 +25,22 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Request Middleware for each request
+api.interceptors.request.use((config) => {
+  const userInfo = useUserStore.getState().userInfo;
+  const token = userInfo?._accessToken;
+
+  if (config.headers?.skipAuth) {
+    delete config.headers.skipAuth;
+    return config;
+  }
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 
 export { api };

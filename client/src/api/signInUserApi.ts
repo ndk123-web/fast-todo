@@ -18,10 +18,18 @@ const signInUserApi = async (data: signInType): Promise<signInResponse> => {
   //   }
   // );
 
-  const response = await api.post(`/users/signin`, {
-    email: data.email,
-    password: data.password,
-  });
+  const response = await api.post(
+    `/users/signin`,
+    {
+      email: data.email,
+      password: data.password,
+    },
+    {
+      headers: {
+        skipAuth: true,
+      },
+    }
+  );
 
   // for debug purpose
   console.log("Sing In Api Response", response.data);

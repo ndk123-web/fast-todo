@@ -2,15 +2,18 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getItem, setItem, deleteItem } from "./indexDB/indexDBStorage";
 import type { PersistStorage } from "zustand/middleware";
+import createWorkspaceAPI from "../api/createWorkspaceApi";
+import useUserStore from "./useUserInfo";
 
 // Todo interface
 export interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  priority: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high";
   createdAt: Date;
   workspaceId: string;
+  status: string;
 }
 
 // Goal interface
@@ -21,6 +24,7 @@ export interface Goal {
   completed: boolean;
   createdAt: Date;
   workspaceId: string;
+  status: string;
 }
 
 // ReactFlow Node interface
@@ -54,6 +58,7 @@ export interface Workspace {
   goals: Goal[];
   initialNodes: FlowNode[];
   initialEdges: FlowEdge[];
+  status: string;
 }
 
 interface WorkspaceState {
@@ -68,14 +73,28 @@ interface WorkspaceState {
   initializeDefaultWorkspace: () => void;
 
   // Todo Actions - Optimistic Updates with API calls
-  addTodo: (workspaceId: string, todo: Omit<Todo, 'id' | 'createdAt' | 'workspaceId'>) => Promise<void>;
-  updateTodo: (workspaceId: string, todoId: string, updates: Partial<Todo>) => Promise<void>;
+  addTodo: (
+    workspaceId: string,
+    todo: Omit<Todo, "id" | "createdAt" | "workspaceId">
+  ) => Promise<void>;
+  updateTodo: (
+    workspaceId: string,
+    todoId: string,
+    updates: Partial<Todo>
+  ) => Promise<void>;
   deleteTodo: (workspaceId: string, todoId: string) => Promise<void>;
   toggleTodoCompleted: (workspaceId: string, todoId: string) => Promise<void>;
 
   // Goal Actions - Optimistic Updates with API calls
-  addGoal: (workspaceId: string, goal: Omit<Goal, 'id' | 'createdAt' | 'workspaceId'>) => Promise<void>;
-  updateGoal: (workspaceId: string, goalId: string, updates: Partial<Goal>) => Promise<void>;
+  addGoal: (
+    workspaceId: string,
+    goal: Omit<Goal, "id" | "createdAt" | "workspaceId">
+  ) => Promise<void>;
+  updateGoal: (
+    workspaceId: string,
+    goalId: string,
+    updates: Partial<Goal>
+  ) => Promise<void>;
   deleteGoal: (workspaceId: string, goalId: string) => Promise<void>;
   toggleGoalCompleted: (workspaceId: string, goalId: string) => Promise<void>;
 
@@ -102,8 +121,16 @@ const indexedDBStorage: PersistStorage<WorkspaceState> = {
       parsed.state.workspaces = parsed.state.workspaces.map((ws: any) => ({
         ...ws,
         createdAt: new Date(ws.createdAt),
-        todos: ws.todos?.map((t: any) => ({ ...t, createdAt: new Date(t.createdAt) })) || [],
-        goals: ws.goals?.map((g: any) => ({ ...g, createdAt: new Date(g.createdAt) })) || [],
+        todos:
+          ws.todos?.map((t: any) => ({
+            ...t,
+            createdAt: new Date(t.createdAt),
+          })) || [],
+        goals:
+          ws.goals?.map((g: any) => ({
+            ...g,
+            createdAt: new Date(g.createdAt),
+          })) || [],
         initialNodes: ws.initialNodes || [],
         initialEdges: ws.initialEdges || [],
       }));
@@ -112,8 +139,16 @@ const indexedDBStorage: PersistStorage<WorkspaceState> = {
       parsed.state.currentWorkspace = {
         ...parsed.state.currentWorkspace,
         createdAt: new Date(parsed.state.currentWorkspace.createdAt),
-        todos: parsed.state.currentWorkspace.todos?.map((t: any) => ({ ...t, createdAt: new Date(t.createdAt) })) || [],
-        goals: parsed.state.currentWorkspace.goals?.map((g: any) => ({ ...g, createdAt: new Date(g.createdAt) })) || [],
+        todos:
+          parsed.state.currentWorkspace.todos?.map((t: any) => ({
+            ...t,
+            createdAt: new Date(t.createdAt),
+          })) || [],
+        goals:
+          parsed.state.currentWorkspace.goals?.map((g: any) => ({
+            ...g,
+            createdAt: new Date(g.createdAt),
+          })) || [],
         initialNodes: parsed.state.currentWorkspace.initialNodes || [],
         initialEdges: parsed.state.currentWorkspace.initialEdges || [],
       };
@@ -151,7 +186,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
       workspaces: [],
       currentWorkspace: null,
 
-      // WORKSPACE ACTIONS 
+      // WORKSPACE ACTIONS
       addWorkspace: async (name: string) => {
         const tempId = `workspace_${Date.now()}`;
         const newWorkspace: Workspace = {
@@ -163,28 +198,50 @@ const useWorkspaceStore = create<WorkspaceState>()(
           goals: [],
           initialNodes: [],
           initialEdges: [],
+          status: "PENDING",
         };
 
         // Optimistic update - UI instantly updates
         set({ workspaces: [...get().workspaces, newWorkspace] });
 
         try {
+          const userId = useUserStore.getState().userInfo?.userId;
+          if (!userId) throw new Error("User not logged in");
+
           // API call in background
-          // const response = await createWorkspaceAPI({ workspaceName: name, userId: 'user_id' });
-          // Update with real ID from server
-          // set({ workspaces: get().workspaces.map(ws => ws.id === tempId ? { ...ws, id: response.id } : ws) });
-          console.log('✅ Workspace created:', name);
+          const response: any = await createWorkspaceAPI({
+            workspaceName: name,
+            userId: userId,
+          });
+
+          if (response?.response.success !== "true") {
+            throw new Error("Failed to create workspace on server");
+          }
+
+          newWorkspace.status = "SUCCESS";
+          const workspaceIdFromServer = response.response.workspaceId;
+          console.log("Response from createWorkspaceAPI:", response);
+          // Update workspace ID with the one from server
+          set({
+            workspaces: get().workspaces.map((ws) =>
+              ws.id === tempId ? { ...ws, id: workspaceIdFromServer } : ws
+            ),
+          });
+          console.log("✅ Workspace created:", name);
         } catch (error) {
-          console.error('❌ Failed to create workspace:', error);
+          console.error("❌ Failed to create workspace:", error);
           // Rollback on error
-          set({ workspaces: get().workspaces.filter(ws => ws.id !== tempId) });
-          alert('Failed to create workspace. Please try again.');
+          set({
+            workspaces: get().workspaces.filter((ws) => ws.id !== tempId),
+          });
+          newWorkspace.status = "FAILED";
+          alert("Failed to create workspace. Please try again.");
         }
       },
 
       editWorkspace: async (id: string, name: string) => {
         const oldWorkspaces = get().workspaces;
-        
+
         // Optimistic update
         set({
           workspaces: oldWorkspaces.map((ws) =>
@@ -199,12 +256,12 @@ const useWorkspaceStore = create<WorkspaceState>()(
         try {
           // API call
           // await updateWorkspaceAPI({ workspaceId: id, workspaceName: name });
-          console.log('✅ Workspace updated:', name);
+          console.log("✅ Workspace updated:", name);
         } catch (error) {
-          console.error('❌ Failed to update workspace:', error);
+          console.error("❌ Failed to update workspace:", error);
           // Rollback
           set({ workspaces: oldWorkspaces });
-          alert('Failed to update workspace. Please try again.');
+          alert("Failed to update workspace. Please try again.");
         }
       },
 
@@ -212,7 +269,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
         const workspace = get().workspaces.find((ws) => ws.id === id);
 
         if (workspace?.isDefault) {
-          alert('Cannot delete default workspace');
+          alert("Cannot delete default workspace");
           return;
         }
 
@@ -231,12 +288,12 @@ const useWorkspaceStore = create<WorkspaceState>()(
         try {
           // API call
           // await deleteWorkspaceAPI({ workspaceId: id });
-          console.log('✅ Workspace deleted');
+          console.log("✅ Workspace deleted");
         } catch (error) {
-          console.error('❌ Failed to delete workspace:', error);
+          console.error("❌ Failed to delete workspace:", error);
           // Rollback
           set({ workspaces: oldWorkspaces });
-          alert('Failed to delete workspace. Please try again.');
+          alert("Failed to delete workspace. Please try again.");
         }
       },
 
@@ -257,6 +314,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
             goals: [],
             initialNodes: [],
             initialEdges: [],
+            status: "SUCCESS",
           };
 
           set({
@@ -269,7 +327,10 @@ const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       // ============= TODO ACTIONS =============
-      addTodo: async (workspaceId: string, todo: Omit<Todo, 'id' | 'createdAt' | 'workspaceId'>) => {
+      addTodo: async (
+        workspaceId: string,
+        todo: Omit<Todo, "id" | "createdAt" | "workspaceId">
+      ) => {
         const tempId = `todo_${Date.now()}`;
         const newTodo: Todo = {
           ...todo,
@@ -282,51 +343,69 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
-            ws.id === workspaceId ? { ...ws, todos: [...ws.todos, newTodo] } : ws
-          ),
-        });
-
-        if (get().currentWorkspace?.id === workspaceId) {
-          set({ currentWorkspace: { ...get().currentWorkspace!, todos: [...get().currentWorkspace!.todos, newTodo] } });
-        }
-
-        try {
-          // API call
-          // const response = await createTodoAPI({ ...newTodo, workspaceId });
-          console.log('✅ Todo created:', todo.text);
-        } catch (error) {
-          console.error('❌ Failed to create todo:', error);
-          set({ workspaces: oldWorkspaces });
-          alert('Failed to create todo. Please try again.');
-        }
-      },
-
-      updateTodo: async (workspaceId: string, todoId: string, updates: Partial<Todo>) => {
-        const oldWorkspaces = get().workspaces;
-
-        // Optimistic update
-        set({
-          workspaces: oldWorkspaces.map(ws =>
+          workspaces: oldWorkspaces.map((ws) =>
             ws.id === workspaceId
-              ? { ...ws, todos: ws.todos.map(t => t.id === todoId ? { ...t, ...updates } : t) }
+              ? { ...ws, todos: [...ws.todos, newTodo] }
               : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          set({
+            currentWorkspace: {
+              ...get().currentWorkspace!,
+              todos: [...get().currentWorkspace!.todos, newTodo],
+            },
+          });
+        }
+
+        try {
+          // API call
+          // const response = await createTodoAPI({ ...newTodo, workspaceId });
+          console.log("✅ Todo created:", todo.text);
+        } catch (error) {
+          console.error("❌ Failed to create todo:", error);
+          set({ workspaces: oldWorkspaces });
+          alert("Failed to create todo. Please try again.");
+        }
+      },
+
+      updateTodo: async (
+        workspaceId: string,
+        todoId: string,
+        updates: Partial<Todo>
+      ) => {
+        const oldWorkspaces = get().workspaces;
+
+        // Optimistic update
+        set({
+          workspaces: oldWorkspaces.map((ws) =>
+            ws.id === workspaceId
+              ? {
+                  ...ws,
+                  todos: ws.todos.map((t) =>
+                    t.id === todoId ? { ...t, ...updates } : t
+                  ),
+                }
+              : ws
+          ),
+        });
+
+        if (get().currentWorkspace?.id === workspaceId) {
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await updateTodoAPI({ todoId, ...updates });
-          console.log('✅ Todo updated');
+          console.log("✅ Todo updated");
         } catch (error) {
-          console.error('❌ Failed to update todo:', error);
+          console.error("❌ Failed to update todo:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to update todo. Please try again.');
+          alert("Failed to update todo. Please try again.");
         }
       },
 
@@ -335,61 +414,75 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
-            ws.id === workspaceId ? { ...ws, todos: ws.todos.filter(t => t.id !== todoId) } : ws
+          workspaces: oldWorkspaces.map((ws) =>
+            ws.id === workspaceId
+              ? { ...ws, todos: ws.todos.filter((t) => t.id !== todoId) }
+              : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await deleteTodoAPI({ todoId });
-          console.log('✅ Todo deleted');
+          console.log("✅ Todo deleted");
         } catch (error) {
-          console.error('❌ Failed to delete todo:', error);
+          console.error("❌ Failed to delete todo:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to delete todo. Please try again.');
+          alert("Failed to delete todo. Please try again.");
         }
       },
 
       toggleTodoCompleted: async (workspaceId: string, todoId: string) => {
-        const workspace = get().workspaces.find(ws => ws.id === workspaceId);
-        const todo = workspace?.todos.find(t => t.id === todoId);
+        const workspace = get().workspaces.find((ws) => ws.id === workspaceId);
+        const todo = workspace?.todos.find((t) => t.id === todoId);
         if (!todo) return;
 
         const oldWorkspaces = get().workspaces;
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
+          workspaces: oldWorkspaces.map((ws) =>
             ws.id === workspaceId
-              ? { ...ws, todos: ws.todos.map(t => t.id === todoId ? { ...t, completed: !t.completed } : t) }
+              ? {
+                  ...ws,
+                  todos: ws.todos.map((t) =>
+                    t.id === todoId ? { ...t, completed: !t.completed } : t
+                  ),
+                }
               : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await updateTodoAPI({ todoId, completed: !todo.completed });
-          console.log('✅ Todo toggled');
+          console.log("✅ Todo toggled");
         } catch (error) {
-          console.error('❌ Failed to toggle todo:', error);
+          console.error("❌ Failed to toggle todo:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to toggle todo. Please try again.');
+          alert("Failed to toggle todo. Please try again.");
         }
       },
 
       // ============= GOAL ACTIONS =============
-      addGoal: async (workspaceId: string, goal: Omit<Goal, 'id' | 'createdAt' | 'workspaceId'>) => {
+      addGoal: async (
+        workspaceId: string,
+        goal: Omit<Goal, "id" | "createdAt" | "workspaceId">
+      ) => {
         const tempId = `goal_${Date.now()}`;
         const newGoal: Goal = {
           ...goal,
@@ -402,51 +495,69 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
-            ws.id === workspaceId ? { ...ws, goals: [...ws.goals, newGoal] } : ws
-          ),
-        });
-
-        if (get().currentWorkspace?.id === workspaceId) {
-          set({ currentWorkspace: { ...get().currentWorkspace!, goals: [...get().currentWorkspace!.goals, newGoal] } });
-        }
-
-        try {
-          // API call
-          // const response = await createGoalAPI({ ...newGoal, workspaceId });
-          console.log('✅ Goal created:', goal.title);
-        } catch (error) {
-          console.error('❌ Failed to create goal:', error);
-          set({ workspaces: oldWorkspaces });
-          alert('Failed to create goal. Please try again.');
-        }
-      },
-
-      updateGoal: async (workspaceId: string, goalId: string, updates: Partial<Goal>) => {
-        const oldWorkspaces = get().workspaces;
-
-        // Optimistic update
-        set({
-          workspaces: oldWorkspaces.map(ws =>
+          workspaces: oldWorkspaces.map((ws) =>
             ws.id === workspaceId
-              ? { ...ws, goals: ws.goals.map(g => g.id === goalId ? { ...g, ...updates } : g) }
+              ? { ...ws, goals: [...ws.goals, newGoal] }
               : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          set({
+            currentWorkspace: {
+              ...get().currentWorkspace!,
+              goals: [...get().currentWorkspace!.goals, newGoal],
+            },
+          });
+        }
+
+        try {
+          // API call
+          // const response = await createGoalAPI({ ...newGoal, workspaceId });
+          console.log("✅ Goal created:", goal.title);
+        } catch (error) {
+          console.error("❌ Failed to create goal:", error);
+          set({ workspaces: oldWorkspaces });
+          alert("Failed to create goal. Please try again.");
+        }
+      },
+
+      updateGoal: async (
+        workspaceId: string,
+        goalId: string,
+        updates: Partial<Goal>
+      ) => {
+        const oldWorkspaces = get().workspaces;
+
+        // Optimistic update
+        set({
+          workspaces: oldWorkspaces.map((ws) =>
+            ws.id === workspaceId
+              ? {
+                  ...ws,
+                  goals: ws.goals.map((g) =>
+                    g.id === goalId ? { ...g, ...updates } : g
+                  ),
+                }
+              : ws
+          ),
+        });
+
+        if (get().currentWorkspace?.id === workspaceId) {
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await updateGoalAPI({ goalId, ...updates });
-          console.log('✅ Goal updated');
+          console.log("✅ Goal updated");
         } catch (error) {
-          console.error('❌ Failed to update goal:', error);
+          console.error("❌ Failed to update goal:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to update goal. Please try again.');
+          alert("Failed to update goal. Please try again.");
         }
       },
 
@@ -455,81 +566,102 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
-            ws.id === workspaceId ? { ...ws, goals: ws.goals.filter(g => g.id !== goalId) } : ws
+          workspaces: oldWorkspaces.map((ws) =>
+            ws.id === workspaceId
+              ? { ...ws, goals: ws.goals.filter((g) => g.id !== goalId) }
+              : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await deleteGoalAPI({ goalId });
-          console.log('✅ Goal deleted');
+          console.log("✅ Goal deleted");
         } catch (error) {
-          console.error('❌ Failed to delete goal:', error);
+          console.error("❌ Failed to delete goal:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to delete goal. Please try again.');
+          alert("Failed to delete goal. Please try again.");
         }
       },
 
       toggleGoalCompleted: async (workspaceId: string, goalId: string) => {
-        const workspace = get().workspaces.find(ws => ws.id === workspaceId);
-        const goal = workspace?.goals.find(g => g.id === goalId);
+        const workspace = get().workspaces.find((ws) => ws.id === workspaceId);
+        const goal = workspace?.goals.find((g) => g.id === goalId);
         if (!goal) return;
 
         const oldWorkspaces = get().workspaces;
 
         // Optimistic update
         set({
-          workspaces: oldWorkspaces.map(ws =>
+          workspaces: oldWorkspaces.map((ws) =>
             ws.id === workspaceId
-              ? { ...ws, goals: ws.goals.map(g => g.id === goalId ? { ...g, completed: !g.completed } : g) }
+              ? {
+                  ...ws,
+                  goals: ws.goals.map((g) =>
+                    g.id === goalId ? { ...g, completed: !g.completed } : g
+                  ),
+                }
               : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          const updatedWorkspace = get().workspaces.find(ws => ws.id === workspaceId);
+          const updatedWorkspace = get().workspaces.find(
+            (ws) => ws.id === workspaceId
+          );
           if (updatedWorkspace) set({ currentWorkspace: updatedWorkspace });
         }
 
         try {
           // API call
           // await updateGoalAPI({ goalId, completed: !goal.completed });
-          console.log('✅ Goal toggled');
+          console.log("✅ Goal toggled");
         } catch (error) {
-          console.error('❌ Failed to toggle goal:', error);
+          console.error("❌ Failed to toggle goal:", error);
           set({ workspaces: oldWorkspaces });
-          alert('Failed to toggle goal. Please try again.');
+          alert("Failed to toggle goal. Please try again.");
         }
       },
 
       // ============= REACTFLOW ACTIONS (No API, just local state) =============
       updateNodes: (workspaceId: string, nodes: FlowNode[]) => {
         set({
-          workspaces: get().workspaces.map(ws =>
+          workspaces: get().workspaces.map((ws) =>
             ws.id === workspaceId ? { ...ws, initialNodes: nodes } : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          set({ currentWorkspace: { ...get().currentWorkspace!, initialNodes: nodes } });
+          set({
+            currentWorkspace: {
+              ...get().currentWorkspace!,
+              initialNodes: nodes,
+            },
+          });
         }
       },
 
       updateEdges: (workspaceId: string, edges: FlowEdge[]) => {
         set({
-          workspaces: get().workspaces.map(ws =>
+          workspaces: get().workspaces.map((ws) =>
             ws.id === workspaceId ? { ...ws, initialEdges: edges } : ws
           ),
         });
 
         if (get().currentWorkspace?.id === workspaceId) {
-          set({ currentWorkspace: { ...get().currentWorkspace!, initialEdges: edges } });
+          set({
+            currentWorkspace: {
+              ...get().currentWorkspace!,
+              initialEdges: edges,
+            },
+          });
         }
       },
     }),

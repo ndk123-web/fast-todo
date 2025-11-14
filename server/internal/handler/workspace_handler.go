@@ -45,7 +45,7 @@ type createWorkspaceStruct struct {
 func (h *workspaceHandler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	var requestBody createWorkspaceStruct
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]any{"response": map[string]any{"success": "false", "Error": err.Error()}})
 		return
 	}
 
@@ -67,13 +67,13 @@ func (h *workspaceHandler) CreateWorkspace(w http.ResponseWriter, r *http.Reques
 	// debug
 	fmt.Println("User Email in Create Workspace: ", userEmail)
 
-	err := h.service.CreateWorkspace(context.Background(), requestBody.UserId, requestBody.WokspaceName)
+	workspaceId, err := h.service.CreateWorkspace(context.Background(), requestBody.UserId, requestBody.WokspaceName)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]any{"response": map[string]any{"success": "false", "Error": err.Error()}})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
+	json.NewEncoder(w).Encode(map[string]any{"response": map[string]any{"workspaceId": workspaceId, "success": "true"}})
 }
 
 type updateReqBody struct {

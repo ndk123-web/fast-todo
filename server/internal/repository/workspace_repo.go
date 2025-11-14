@@ -15,7 +15,7 @@ import (
 // WorkSpaceRepository interface
 type WorkSpaceRepository interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
-	CreateWorkspace(ctx context.Context, userId string, workspaceName string) error
+	CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error)
 	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
 	DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error
 }
@@ -27,12 +27,12 @@ type workspaceRepository struct {
 
 // GetAllUserWorkspace gets all workspaces for a user
 func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error) {
-	
+
 	// validate userId
 	if userId == "" {
 		return nil, errors.New("UserId in Repo is Empty")
 	}
-	
+
 	// convert userId -> oid
 	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
@@ -67,15 +67,15 @@ type createWorkspaceInDb struct {
 	UpdatedAt     time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
-func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string, workspaceName string) error {
+func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error) {
 	if userId == "" || workspaceName == "" {
-		return errors.New("User Email / workspaceName is Empty in Repo")
+		return "",errors.New("User Email / workspaceName is Empty in Repo")
 	}
 
 	// convert first string to objectId
 	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return err
+		return "",err
 	}
 
 	// check if workspace already exists for user
@@ -88,10 +88,10 @@ func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string
 	// if no error, workspace exists
 	if err == nil {
 		//  Document found → duplicate
-		return errors.New("workspace already exists for this user")
+		return "",errors.New("workspace already exists for this user")
 	} else if !errors.Is(err, mongo.ErrNoDocuments) {
 		// Some DB issue
-		return err
+		return "",err
 	}
 
 	// structure for stroring inside db
@@ -105,12 +105,13 @@ func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string
 	// insert inside db
 	insertResult, err := r.workspaceCollection.InsertOne(ctx, insertDoc)
 	if err != nil {
-		return err
+		return "",err
 	}
 
 	// InsertId is interface {} and .(primitive.ObjectId) it means inside that there is value in form of ObjectId and using .Hex() we conver Object id into Readable Hex String
 	fmt.Println("Insert Result: ", insertResult.InsertedID.(primitive.ObjectID).Hex())
-	return nil
+	stringInsertedId := insertResult.InsertedID.(primitive.ObjectID).Hex()
+	return stringInsertedId, nil
 }
 
 func (r *workspaceRepository) UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error {

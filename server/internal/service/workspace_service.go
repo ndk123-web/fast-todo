@@ -11,7 +11,7 @@ import (
 // WorkspaceService interface
 type WorkspaceService interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
-	CreateWorkspace(ctx context.Context, userId string, workspaceName string) error
+	CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string,error)
 	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
 	DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error
 }
@@ -30,9 +30,9 @@ func (s *workspaceService) GetAllUserWorkspace(ctx context.Context, userId strin
 	return s.repo.GetAllUserWorkspace(ctx, userId)
 }
 
-func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, workspaceName string) error {
+func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string,error) {
 	if userId == "" || workspaceName == "" {
-		return errors.New("UserEmail or workspaceName is Empty")
+		return "",errors.New("UserEmail or workspaceName is Empty")
 	}
 
 	// call the repo create method
