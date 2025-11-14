@@ -204,6 +204,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
         // Optimistic update - UI instantly updates
         set({ workspaces: [...get().workspaces, newWorkspace] });
 
+        // Background API call to create workspace on server and update Workspace ID to real ID from server
         try {
           const userId = useUserStore.getState().userInfo?.userId;
           if (!userId) throw new Error("User not logged in");
@@ -214,19 +215,25 @@ const useWorkspaceStore = create<WorkspaceState>()(
             userId: userId,
           });
 
+          // Check if response indicates success
           if (response?.response.success !== "true") {
             throw new Error("Failed to create workspace on server");
           }
 
+          // Update workspace status to SUCCESS
           newWorkspace.status = "SUCCESS";
+
+          // Extract the workspace ID from server response
           const workspaceIdFromServer = response.response.workspaceId;
           console.log("Response from createWorkspaceAPI:", response);
+
           // Update workspace ID with the one from server
           set({
             workspaces: get().workspaces.map((ws) =>
               ws.id === tempId ? { ...ws, id: workspaceIdFromServer } : ws
             ),
           });
+
           console.log("✅ Workspace created:", name);
         } catch (error) {
           console.error("❌ Failed to create workspace:", error);

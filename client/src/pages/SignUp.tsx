@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import signUpUserApi from '../api/signUpUserApi';
 import useUserStore from '../store/useUserInfo';
-import TrelloLogo from '../components/TrelloLogo';
 import './SignUp.css';
 
 const SignUp = () => {
@@ -45,7 +44,7 @@ const SignUp = () => {
       <nav className="signup-navbar">
         <div className="signup-nav-content">
           <Link to="/" className="signup-nav-logo">
-            <TrelloLogo size={28} />
+            <img src="/TaskPlexus.png" alt="TaskPlexus" width={40} />
             <span style={{ marginLeft: '10px' }}>TaskPlexus</span>
           </Link>
           <div className="signup-nav-links">
@@ -158,7 +157,7 @@ const SignUp = () => {
               
               <div className="signup-benefits">
                 <div className="signup-benefit-item">
-                  <div className="signup-benefit-icon"><TrelloLogo size={32} /></div>
+                  <div className="signup-benefit-icon"><img src="/TaskPlexus.png" alt="TaskPlexus" width={48} /></div>
                   <div>
                     <h3>Lightning Fast</h3>
                     <p>Create and manage tasks instantly</p>

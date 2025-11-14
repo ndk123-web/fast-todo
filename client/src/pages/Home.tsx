@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
+// import { Navigate } from 'react-router-dom';
 import useUserStore from '../store/useUserInfo';
-import TrelloLogo from '../components/TrelloLogo';
 import './Home.css';
 
 const Home = () => {
@@ -12,7 +11,7 @@ const Home = () => {
       <nav className="navbar">
         <div className="nav-content">
           <h1 className="nav-logo">
-            <TrelloLogo size={32} />
+            <img src="/TaskPlexus.png" alt="TaskPlexus" width={48} />
             <span style={{ marginLeft: '12px' }}>TaskPlexus</span>
           </h1>
           <div className="nav-links">
@@ -104,7 +103,7 @@ const Home = () => {
       <section className="features-section">
         <div className="features-grid">
           <div className="feature-card">
-            <div className="feature-icon"><TrelloLogo size={40} /></div>
+            <div className="feature-icon"><img src="/TaskPlexus.png" alt="TaskPlexus" width={56} /></div>
             <h3 className="feature-title">Lightning Fast</h3>
             <p className="feature-description">
               Instantly add, edit, and complete tasks without any lag or delays

@@ -349,7 +349,7 @@ const Dashboard = () => {
       <aside className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo">
-           {!sidebarCollapsed ? <TrelloLogo size={28} /> : <TrelloLogo size={24} />}
+           <img src="/TaskPlexus.png" alt="TaskPlexus" width={!sidebarCollapsed ? 40 : 36} />
             {!sidebarCollapsed && <span>TaskPlexus</span>}
           </Link>
           <button 
@@ -624,7 +624,7 @@ const Dashboard = () => {
         <header className="dashboard-top-header">
           <div className="dashboard-top-header-left">
             {/* {/* <div className="dashboard-top-logo">
-              <TrelloLogo size={28} />
+              <img src="/TaskPlexus.png" alt="TaskPlexus" width={40} />
               <span className="dashboard-top-logo-text">TaskPlexus</span>
             </div> */}
             <div className="dashboard-top-breadcrumb">
