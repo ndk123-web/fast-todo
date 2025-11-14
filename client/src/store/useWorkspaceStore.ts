@@ -4,8 +4,8 @@ import { getItem, setItem, deleteItem } from "./indexDB/indexDBStorage";
 import type { PersistStorage } from "zustand/middleware";
 import createWorkspaceAPI from "../api/createWorkspaceApi";
 import deleteWorkspaceAPI from "../api/deleteWorkspaceApi";
+import updateWorkspaceAPI from "../api/updateWorkspaceApi";
 import useUserStore from "./useUserInfo";
-import { use } from "react";
 
 // Todo interface
 export interface Todo {
@@ -257,6 +257,14 @@ const useWorkspaceStore = create<WorkspaceState>()(
       editWorkspace: async (id: string, name: string) => {
         const oldWorkspaces = get().workspaces;
 
+        // Update Pending status
+        const workspaceToEdit = oldWorkspaces.find((ws) => ws.id === id);
+        if (!workspaceToEdit) {
+          alert("Workspace not found");
+          return;
+        }
+        workspaceToEdit.status = "PENDING";
+
         // Optimistic update
         set({
           workspaces: oldWorkspaces.map((ws) =>
@@ -270,12 +278,35 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
         try {
           // API call
+          const userId = useUserStore.getState().userInfo?.userId;
+          if (!userId) throw new Error("User not logged in");
+
+          const response: any = await updateWorkspaceAPI({
+            workspaceName: workspaceToEdit.name,
+            updatedWorkspaceName: name,
+            userId: userId,
+          });
+
+          if (response?.response !== "Success") {
+            throw new Error("Failed to update workspace on server");
+          }
+
+          console.log("Response from updateWorkspaceAPI:", response);
+
+          // Update status to SUCCESS
+          workspaceToEdit.status = "SUCCESS";
+
           // await updateWorkspaceAPI({ workspaceId: id, workspaceName: name });
           console.log("✅ Workspace updated:", name);
         } catch (error) {
           console.error("❌ Failed to update workspace:", error);
+
           // Rollback
           set({ workspaces: oldWorkspaces });
+
+          // Update status to FAILED
+          workspaceToEdit.status = "FAILED";
+
           alert("Failed to update workspace. Please try again.");
         }
       },
@@ -330,7 +361,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
           console.log("✅ Workspace deleted");
         } catch (error) {
           console.error("❌ Failed to delete workspace:", error);
-          
+
           // Rollback on error - restore old workspaces
           set({ workspaces: oldWorkspaces });
 
