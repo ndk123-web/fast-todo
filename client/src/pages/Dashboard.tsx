@@ -60,7 +60,7 @@ const Dashboard = () => {
 
   // Run pending operations when workspaces or currentWorkspace change
   useEffect(() => {
-    pendingOps();
+    await pendingOps();
     console.log("Running pending operations...");
   },[workspaces, currentWorkspace]);
   
