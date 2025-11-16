@@ -31,7 +31,7 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
   const {userInfo, signOutUser} = useUserStore();
-  const { workspaces, currentWorkspace, addWorkspace, editWorkspace, deleteWorkspace, setCurrentWorkspace, initializeDefaultWorkspace, clearWorkspace } = useWorkspaceStore();
+  const { workspaces, currentWorkspace, addWorkspace, editWorkspace, deleteWorkspace, setCurrentWorkspace, initializeDefaultWorkspace } = useWorkspaceStore();
   
   // Wait for hydration from IndexedDB
   const [isHydrated, setIsHydrated] = useState(false);

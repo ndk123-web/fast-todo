@@ -3,9 +3,10 @@ import { persist } from "zustand/middleware";
 import { getItem, setItem, deleteItem } from "./indexDB/workspaceIndexDB";
 import type { PersistStorage } from "zustand/middleware";
 import deleteWorkspaceAPI from "../api/deleteWorkspaceApi";
-import updateWorkspaceAPI from "../api/updateWorkspaceApi";
+// import updateWorkspaceAPI from "../api/updateWorkspaceApi";
 import useUserStore from "./useUserInfo";
 import { addPendingOperation } from "./indexDB/pendingOps/usePendingOps";
+// import { use } from "react";
 
 // Todo interface
 export interface Todo {
@@ -195,7 +196,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
       clearWorkspace: async () => {
         // Clear state in memory
         set({ workspaces: [], currentWorkspace: null });
-        
+
         // Clear IndexedDB storage
         try {
           await deleteItem("workspace-storage");
@@ -203,10 +204,12 @@ const useWorkspaceStore = create<WorkspaceState>()(
         } catch (error) {
           console.error("❌ Failed to clear workspace storage:", error);
         }
-        
+
         // Clear pending operations
         try {
-          const { getPendingOperations, removePendingOperation } = await import("./indexDB/pendingOps/usePendingOps");
+          const { getPendingOperations, removePendingOperation } = await import(
+            "./indexDB/pendingOps/usePendingOps"
+          );
           const pendingOps = await getPendingOperations();
           for (const op of pendingOps) {
             await removePendingOperation(op.id);
@@ -298,37 +301,46 @@ const useWorkspaceStore = create<WorkspaceState>()(
         }
 
         try {
-          // API call
+          // // API call
           const userId = useUserStore.getState().userInfo?.userId;
           if (!userId) throw new Error("User not logged in");
 
-          const response: any = await updateWorkspaceAPI({
-            workspaceName: oldWorkspaceName,
-            updatedWorkspaceName: name,
-            userId: userId,
+          // const response: any = await updateWorkspaceAPI({
+          //   workspaceName: oldWorkspaceName,
+          //   updatedWorkspaceName: name,
+          //   userId: userId,
+          // });
+
+          await addPendingOperation({
+            id: id,
+            type: "UPDATE_WORKSPACE",
+            status: "PENDING",
+            payload: {
+              workspaceName: oldWorkspaceName,
+              updatedWorkspaceName: name,
+              userId: userId,
+            },
+            timestamp: Date.now(),
+            retryCount: 0,
           });
 
-          if (response?.response !== "Success") {
-            throw new Error("Failed to update workspace on server");
-          }
+          // console.log("Response from updateWorkspaceAPI:", response);
 
-          console.log("Response from updateWorkspaceAPI:", response);
+          // // Update status to SUCCESS
+          // set({
+          //   workspaces: get().workspaces.map((ws) =>
+          //     ws.id === id ? { ...ws, status: "SUCCESS" } : ws
+          //   ),
+          // });
 
-          // Update status to SUCCESS
-          set({
-            workspaces: get().workspaces.map((ws) =>
-              ws.id === id ? { ...ws, status: "SUCCESS" } : ws
-            ),
-          });
-
-          if (get().currentWorkspace?.id === id) {
-            set({
-              currentWorkspace: {
-                ...get().currentWorkspace!,
-                status: "SUCCESS",
-              },
-            });
-          }
+          // if (get().currentWorkspace?.id === id) {
+          //   set({
+          //     currentWorkspace: {
+          //       ...get().currentWorkspace!,
+          //       status: "SUCCESS",
+          //     },
+          //   });
+          // }
 
           console.log("✅ Workspace updated:", name);
         } catch (error) {

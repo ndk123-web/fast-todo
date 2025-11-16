@@ -1,5 +1,6 @@
 import { getPendingOperations, addPendingOperation, removePendingOperation } from "../store/indexDB/pendingOps/usePendingOps";
 import createWorkspaceAPI from "../api/createWorkspaceApi";
+import updateWorkspaceAPI from "../api/updateWorkspaceApi";
 import useWorkspaceStore from "../store/useWorkspaceStore";
 
 const pendingOps = async () => {
@@ -72,10 +73,76 @@ const pendingOps = async () => {
                     // Update the retry count in pending operations
                     await addPendingOperation(op);
                 }
-                
                 continue; // skip to next operation
             }
         }   
+        else if (op.type === "UPDATE_WORKSPACE" && op.status === "PENDING") {
+            try {
+                const response: any = await updateWorkspaceAPI(op.payload);
+                console.log("Update Workspace API response:", response?.response);
+
+                if (response?.response !== "Success") {
+                    // if not success status change to failed
+                    throw new Error("Failed to update workspace on server");
+                }
+
+                console.log("Response from updateWorkspaceAPI:", response);
+
+                // if success update status to success
+                const currentWorkspaces = useWorkspaceStore.getState().workspaces;
+                const updatedWorkspaces = currentWorkspaces.map((ws) =>
+                    ws.id === op.id
+                        ? { ...ws, name: op.payload.updatedWorkspaceName, status: "SUCCESS" }
+                        : ws
+                );
+
+                // Update the store with new workspace name and status
+                useWorkspaceStore.getState().setWorkspace(updatedWorkspaces);
+
+                // If this was the current workspace, update it too
+                const currentWorkspace = useWorkspaceStore.getState().currentWorkspace;
+                if (currentWorkspace?.id === op.payload.workspaceId) {
+                    const updatedCurrentWorkspace = updatedWorkspaces.find(
+                        (ws) => ws.id === op.payload.workspaceId
+                    );
+                    if (updatedCurrentWorkspace) {
+                        useWorkspaceStore.setState({
+                            currentWorkspace: updatedCurrentWorkspace,
+                        });
+                    }
+                }
+
+                // Remove from pending operations after success
+                await removePendingOperation(op.id);
+            }
+           catch(error) {
+                console.error("Error processing pending operation:", error);
+                
+                // Increment retry count
+                op.retryCount += 1;
+                
+                // If retry count exceeds limit (e.g., 3), mark as FAILED
+                if (op.retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", op.id);
+                    
+                    // Update workspace status to FAILED in store
+                    const currentWorkspaces = useWorkspaceStore.getState().workspaces;
+                    const updatedWorkspaces = currentWorkspaces.map((ws) =>
+                        ws.id === op.payload.workspaceId
+                            ? { ...ws, status: "FAILED" }
+                            : ws
+                    );
+                    useWorkspaceStore.setState({ workspaces: updatedWorkspaces });
+                    
+                    // Remove from pending operations
+                    await removePendingOperation(op.id);
+                } else {
+                    // Update the retry count in pending operations
+                    await addPendingOperation(op);
+                }
+                continue; // skip to next operation
+            }
+        }
     }
 }
 
