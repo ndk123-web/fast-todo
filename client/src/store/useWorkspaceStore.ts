@@ -572,7 +572,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
         const tempId = `todo_${Date.now()}`;
         const userId = data.userId;
 
-        let todo: CreateTaskReq = {
+        const todo: CreateTaskReq = {
           id: tempId,
           text: taskName,
           priority: priority,
@@ -582,21 +582,23 @@ const useWorkspaceStore = create<WorkspaceState>()(
           status: "PENDING",
         };
 
-        // add todo in current Workspace optimistically
-        // useWorkspaceStore.getState().setCurrentWorkspace()
-        let currentWorkspace = useWorkspaceStore.getState().currentWorkspace;
-        currentWorkspace?.todos.push(todo);
+        // Optimistic update (immutable) — update both workspaces and currentWorkspace once
+        set((state) => {
+          const updatedWorkspaces = state.workspaces.map((ws) =>
+            ws.id === workspaceId
+              ? { ...ws, todos: [...(ws.todos || []), todo] }
+              : ws
+          );
 
-        // also add in workspaces array
-        let workspaces = useWorkspaceStore.getState().workspaces;
-        let updatedWorkspacesWithTodo = workspaces.map((ws) => {
-          if (ws.id === workspaceId) {
-            ws.todos.push(todo);
-            return ws;
-          }
-          return ws;
+          const updatedCurrent = state.currentWorkspace?.id === workspaceId
+            ? {
+                ...state.currentWorkspace!,
+                todos: [...(state.currentWorkspace!.todos || []), todo],
+              }
+            : state.currentWorkspace;
+
+          return { workspaces: updatedWorkspaces, currentWorkspace: updatedCurrent };
         });
-        useWorkspaceStore.getState().setWorkspace(updatedWorkspacesWithTodo);
 
         await addPendingOperation({
           id: `CREATE_TODO_${tempId}`,

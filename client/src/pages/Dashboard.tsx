@@ -142,6 +142,10 @@ const Dashboard = () => {
 
   },[]);
   
+  useEffect(() => {
+
+  })
+  
   // Sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
@@ -167,9 +171,10 @@ const Dashboard = () => {
   // ]);
 
   const [todos, setTodos] = useState<Todo[]>(currentWorkspace?.todos ?? []);
+
   useEffect(() => {
     setTodos(currentWorkspace?.todos ?? []);
-  }, [currentWorkspace?.id, currentWorkspace?.todos]);
+  }, [currentWorkspace]);
 
   // Demo goals with progress tracking
   const [goals, setGoals] = useState<Goal[]>([
