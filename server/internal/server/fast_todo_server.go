@@ -37,6 +37,7 @@ func (s *Server) Start(port string) error {
 	mux.Handle("PUT /api/v1/todos/update-todo", middleware.AuthMiddleware((http.HandlerFunc(s.todoHandler.UpdateTodo))))                       // using ID of todo we can directly can update the todo
 	mux.Handle("DELETE /api/v1/todos/delete-todo", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.DeleteTodo)))                      // using ID of todo we can directly can delte the todo
 	mux.Handle("GET /api/v1/users/{userId}/get-ws-todo/{workspaceID}", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.GetSpecificTodo)))
+	mux.Handle("POST /api/v1/users/toggle-todo", middleware.AuthMiddleware(http.HandlerFunc(s.todoHandler.ToogleTodo)))
 
 	// No Need Of Middleware (Signin and Signup)
 	mux.HandleFunc("POST /api/v1/users/signup", s.userHandler.SignUpUser)

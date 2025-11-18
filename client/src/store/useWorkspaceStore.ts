@@ -5,6 +5,7 @@ import type { PersistStorage } from "zustand/middleware";
 import useUserStore from "./useUserInfo";
 import { addPendingOperation } from "./indexDB/pendingOps/usePendingOps";
 import type { CreateTaskReq } from "../types/createTaskType";
+import toggleTodoApi from "../api/toggleTaskApi";
 
 // Todo interface
 export interface Todo {
@@ -82,7 +83,11 @@ interface WorkspaceState {
     updates: Partial<Todo>
   ) => Promise<void>;
   deleteTodo: (workspaceId: string, todoId: string) => Promise<void>;
-  toggleTodoCompleted: (workspaceId: string, todoId: string) => Promise<void>;
+  toggleTodoCompleted: (
+    toggle: string,
+    todoId: string,
+    userId: string
+  ) => Promise<void>;
 
   // Goal Actions - Optimistic Updates with API calls
   addGoal: (
@@ -590,14 +595,18 @@ const useWorkspaceStore = create<WorkspaceState>()(
               : ws
           );
 
-          const updatedCurrent = state.currentWorkspace?.id === workspaceId
-            ? {
-                ...state.currentWorkspace!,
-                todos: [...(state.currentWorkspace!.todos || []), todo],
-              }
-            : state.currentWorkspace;
+          const updatedCurrent =
+            state.currentWorkspace?.id === workspaceId
+              ? {
+                  ...state.currentWorkspace!,
+                  todos: [...(state.currentWorkspace!.todos || []), todo],
+                }
+              : state.currentWorkspace;
 
-          return { workspaces: updatedWorkspaces, currentWorkspace: updatedCurrent };
+          return {
+            workspaces: updatedWorkspaces,
+            currentWorkspace: updatedCurrent,
+          };
         });
 
         await addPendingOperation({
@@ -691,12 +700,25 @@ const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
-      toggleTodoCompleted: async (workspaceId: string, todoId: string) => {
-        const workspace = get().workspaces.find((ws) => ws.id === workspaceId);
-        const todo = workspace?.todos.find((t) => t.id === todoId);
-        if (!todo) return;
-
+      toggleTodoCompleted: async (
+        toggle: string,
+        todoId: string,
+        userId: string
+      ) => {
         const oldWorkspaces = get().workspaces;
+
+        // Find the workspace containing this todo
+        const foundWs = oldWorkspaces.find((ws) =>
+          ws.todos.some((t) => t.id === todoId)
+        );
+        const workspaceId = foundWs?.id;
+        if (!workspaceId) {
+          console.error("Workspace not found for todo", todoId);
+          return;
+        }
+
+        // Determine new completed/status based on toggle string
+        const willComplete = toggle === "completed";
 
         // Optimistic update
         set({
@@ -705,7 +727,13 @@ const useWorkspaceStore = create<WorkspaceState>()(
               ? {
                   ...ws,
                   todos: ws.todos.map((t) =>
-                    t.id === todoId ? { ...t, completed: !t.completed } : t
+                    t.id === todoId
+                      ? {
+                          ...t,
+                          completed: willComplete,
+                          status: willComplete ? "completed" : "not-started",
+                        }
+                      : t
                   ),
                 }
               : ws
@@ -720,12 +748,34 @@ const useWorkspaceStore = create<WorkspaceState>()(
         }
 
         try {
-          // API call
-          // await updateTodoAPI({ todoId, completed: !todo.completed });
-          console.log("✅ Todo toggled");
+          // const apiRes: any = await toggleTodoApi({ id: todoId, toggle, userId });
+          // // Backend returns { response: "true" } on success
+          // if (apiRes?.response !== "true") {
+          //   throw new Error("Failed to toggle todo on server");
+          // }
+          // console.log("✅ Todo toggled");
+
+          await addPendingOperation({
+            id: `toggle_todo_${Date.now}`,
+            type: "TOGGLE_TODO",
+            status: "PENDING",
+            payload: {
+              id: todoId,
+              toggle,
+              userId,
+            },
+            timestamp: Date.now(),
+            retryCount: 0,
+          });
+          console.log("✅ Todo toggle queued");
         } catch (error) {
           console.error("❌ Failed to toggle todo:", error);
+          // Rollback
           set({ workspaces: oldWorkspaces });
+          if (get().currentWorkspace?.id === workspaceId) {
+            const original = oldWorkspaces.find((ws) => ws.id === workspaceId);
+            if (original) set({ currentWorkspace: original });
+          }
           alert("Failed to toggle todo. Please try again.");
         }
       },

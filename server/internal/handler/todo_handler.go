@@ -19,6 +19,7 @@ type TodoHandler interface {
 	UpdateTodo(w http.ResponseWriter, r *http.Request)
 	DeleteTodo(w http.ResponseWriter, r *http.Request)
 	GetSpecificTodo(w http.ResponseWriter, r *http.Request)
+	ToogleTodo(w http.ResponseWriter, r *http.Request)
 }
 
 // todoHandler implements TodoHandler with a service layer dependency
@@ -49,6 +50,36 @@ func (h *todoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"response": todos, "userEmail": userEmail})
+}
+
+type toggleBody struct {
+	Toggle string `json:"toggle"`
+	ID     string `json:"id"`
+	UserId string `json:"userId"`
+}
+
+func (h *todoHandler) ToogleTodo(w http.ResponseWriter, r *http.Request) {
+	// get req body
+	// send to the service
+	var reqBody toggleBody
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": err.Error()})
+		return
+	}
+
+	ok, err := h.service.ToggleTodo(context.Background(), reqBody.ID, reqBody.Toggle, reqBody.UserId)
+	w.Header().Set("Content-Type", "application/json")
+	if err != nil || !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"response": "false", "error": func() string {
+			if err != nil {
+				return err.Error()
+			}
+			return "toggle failed"
+		}()})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"response": "true"})
 }
 
 // CreateTodo handles HTTP POST requests to create a new todo item
@@ -100,7 +131,7 @@ func (h *todoHandler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 type updateTodo struct {
 	ID   string `json:"id"`   // ID of the todo to update
 	Task string `json:"task"` // New task text
-	// WorkspaceId string `json:"workspaceId"`
+	// WorkspaceId string `json:"workspaceId"`  // No Need of workspaceID because ID is already unique
 }
 
 // UpdateTodo handles HTTP PUT requests to update an existing todo

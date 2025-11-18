@@ -4,6 +4,7 @@ import updateWorkspaceAPI from "../api/updateWorkspaceApi";
 import useWorkspaceStore from "../store/useWorkspaceStore";
 import deleteWorkspaceAPI from "../api/deleteWorkspaceApi";
 import createTaskApi from "../api/createTaskApi";
+import toggleTodoApi from "../api/toggleTaskApi";
 
 const pendingOps = async () => {
     const ops = await getPendingOperations();
@@ -241,6 +242,32 @@ const pendingOps = async () => {
                 } else {
                     await addPendingOperation(op);
                 }
+            }
+        }
+        else if (op.type === "TOGGLE_TODO" && op.status === "PENDING") {
+            try {
+                const apiRes: any = await toggleTodoApi(op.payload);
+                // Backend returns { response: "true" } on success
+    
+                if (apiRes?.response !== "true") {
+                    throw new Error("Failed to toggle todo on server");
+                }
+    
+                console.log("✅ Todo toggled");
+                
+                // if success remove from pending operations
+                await removePendingOperation(op.id);
+            }
+            catch(error) {
+                console.error("Error processing pending operation:", error);
+                op.retryCount += 1;
+                if (op.retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", op.id);
+                    await removePendingOperation(op.id);
+                } else {
+                    await addPendingOperation(op);
+                }
+                continue; // skip to next operation
             }
         }
     }

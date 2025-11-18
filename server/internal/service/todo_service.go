@@ -16,6 +16,7 @@ type TodoService interface {
 	UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error)
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
 	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
+	ToggleTodo(ctx context.Context, todoId string, toggle string, userId string) (bool, error)
 }
 
 // todoService implements TodoService with a repository layer dependency
@@ -31,6 +32,14 @@ func NewTodoService(repo repository.TodoRepository) TodoService {
 // GetTodos retrieves all todo items from the repository
 func (s *todoService) GetTodos(ctx context.Context) ([]model.Todo, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *todoService) ToggleTodo(ctx context.Context, todoId string, toggle string, userId string) (bool, error) {
+	if todoId == "" || toggle == "" || userId == "" {
+		return false, errors.New("Something is missing from userId,todoId,toggle in service")
+	}
+	// Delegate to repository to actually update the DB
+	return s.repo.ToggleTodo(ctx, todoId, toggle, userId)
 }
 
 // CreateTodo adds a new todo item through the repository

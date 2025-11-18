@@ -4,7 +4,7 @@ package repository
 import (
 	"context"
 	"errors"
-
+	"fmt"
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,6 +17,7 @@ type TodoRepository interface {
 	UpdateTodo(ctx context.Context, todoId string, updatedTask string) (model.Todo, error)
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
 	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
+	ToggleTodo(ctx context.Context, todoId string, toggle string, userId string) (bool, error)
 }
 
 // todoRepo implements TodoRepository with MongoDB as the data store
@@ -50,6 +51,50 @@ func (r *todoRepo) GetAll(ctx context.Context) ([]model.Todo, error) {
 	}
 
 	return todos, nil
+}
+
+func (r *todoRepo) ToggleTodo(ctx context.Context, todoId, toggle, userId string) (bool, error) {
+	if todoId == "" || toggle == "" || userId == "" {
+		return false, errors.New("missing required fields: todoId/toggle/userId")
+	}
+
+	fmt.Println("TodoId: ", todoId)
+	fmt.Println("Toggle: ", toggle)
+	fmt.Println("UserId: ", userId)
+
+	todoOid, err := primitive.ObjectIDFromHex(todoId)
+	if err != nil {
+		return false, err
+	}
+	userOid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return false, err
+	}
+
+	// determine bool value from toggle
+	var doneValue bool
+	switch toggle {
+	case "completed":
+		doneValue = true
+	case "not-started":
+		doneValue = false
+	default:
+		return false, errors.New("invalid toggle value")
+	}
+
+	filter := bson.M{"_id": todoOid, "userId": userOid}
+	update := bson.M{"$set": bson.M{"done": doneValue}}
+
+	updated, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return false, err
+	}
+
+	if updated.ModifiedCount == 0 {
+		return false, errors.New("no todo found for update")
+	}
+
+	return true, nil
 }
 
 // CreateTodo adds a new todo item to the database
