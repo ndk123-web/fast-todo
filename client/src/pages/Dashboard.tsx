@@ -380,6 +380,13 @@ const Dashboard = () => {
   // Toggle todo completion status via store
   const toggleTodo = async (id: string) => {
     if (!currentWorkspace) return;
+    const newTodo = todos.filter((todo) => {
+      if (todo.id === id) {
+        todo.status = todo.status === 'completed' ? 'not-started' : 'completed'; 
+      }
+      return todo;
+    });
+    setTodos(newTodo);
     await toggleTodoCompleted(currentWorkspace.id, id);
   };
 
