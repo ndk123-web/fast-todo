@@ -189,12 +189,22 @@ const pendingOps = async () => {
                 const workspaceId = op.payload.workspaceId;
                 const tempId = op.payload.id; // we stored optimistic todo under this id
 
-                // Update workspaces array
+                // Update workspaces array (replace tempId with server id and dedupe by id)
                 const allWorkspaces = useWorkspaceStore.getState().workspaces;
-                const updatedWorkspaces = allWorkspaces.map(ws => ws.id === workspaceId ? {
-                    ...ws,
-                    todos: ws.todos.map(t => t.id === tempId ? { ...t, id: newId || t.id, status: "SUCCESS" } : t)
-                } : ws);
+                const updatedWorkspaces = allWorkspaces.map(ws => {
+                    if (ws.id !== workspaceId) return ws;
+                    const replaced = ws.todos.map(t =>
+                        t.id === tempId ? { ...t, id: newId || t.id, status: "SUCCESS" } : t
+                    );
+                    const seen = new Set<string>();
+                    const deduped = replaced.filter(t => {
+                        const key = String(t.id);
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                    return { ...ws, todos: deduped };
+                });
                 useWorkspaceStore.setState({ workspaces: updatedWorkspaces });
 
                 // Update currentWorkspace if applicable

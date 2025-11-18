@@ -69,6 +69,85 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    const mergeWorkspaces = (
+      serverWorkspaces: any[],
+      clientWorkspaces: any[]
+    ) => {
+      const serverById = new Map(serverWorkspaces.map((w) => [w.id, w]));
+      const merged: any[] = [];
+
+      // Start with server workspaces and merge client data into them
+      for (const sw of serverWorkspaces) {
+        const cw = clientWorkspaces.find((w) => w.id === sw.id);
+        if (!cw) {
+          // Ensure createdAt and nested dates are Date objects
+          merged.push({
+            ...sw,
+            createdAt: sw.createdAt ? new Date(sw.createdAt) : new Date(),
+            todos: (sw.todos || []).map((t: any) => ({
+              ...t,
+              createdAt: t?.createdAt ? new Date(t.createdAt) : undefined,
+            })),
+            goals: (sw.goals || []).map((g: any) => ({
+              ...g,
+              createdAt: g?.createdAt ? new Date(g.createdAt) : undefined,
+            })),
+          });
+          continue;
+        }
+
+        // Merge todos by id; keep client-only todos (e.g., PENDING with temp id)
+        const serverTodos = sw.todos || [];
+        const serverTodoIds = new Set(serverTodos.map((t: any) => t.id));
+        const clientOnlyTodos = (cw.todos || []).filter((t: any) => !serverTodoIds.has(t.id));
+        const mergedTodos = [
+          ...serverTodos.map((t: any) => ({
+            ...t,
+            createdAt: t?.createdAt ? new Date(t.createdAt) : undefined,
+          })),
+          ...clientOnlyTodos.map((t: any) => ({
+            ...t,
+            createdAt: t?.createdAt ? new Date(t.createdAt) : t.createdAt,
+          })),
+        ];
+
+        // Merge goals similarly
+        const serverGoals = sw.goals || [];
+        const serverGoalIds = new Set(serverGoals.map((g: any) => g.id));
+        const clientOnlyGoals = (cw.goals || []).filter((g: any) => !serverGoalIds.has(g.id));
+        const mergedGoals = [
+          ...serverGoals.map((g: any) => ({
+            ...g,
+            createdAt: g?.createdAt ? new Date(g.createdAt) : undefined,
+          })),
+          ...clientOnlyGoals.map((g: any) => ({
+            ...g,
+            createdAt: g?.createdAt ? new Date(g.createdAt) : g.createdAt,
+          })),
+        ];
+
+        merged.push({
+          ...sw,
+          createdAt: sw.createdAt ? new Date(sw.createdAt) : cw.createdAt,
+          todos: mergedTodos,
+          goals: mergedGoals,
+          initialNodes: sw.initialNodes || cw.initialNodes || [],
+          initialEdges: sw.initialEdges || cw.initialEdges || [],
+          status: sw.status || cw.status || "SUCCESS",
+          isDefault: sw.isDefault ?? cw.isDefault,
+        });
+      }
+
+      // Append client-only workspaces (e.g., offline-created with temp id)
+      for (const cw of clientWorkspaces) {
+        if (!serverById.has(cw.id)) {
+          merged.push(cw);
+        }
+      }
+
+      return merged;
+    };
+
     const initializeWorkspaces = async () => {
       // Wait for hydration first
       const unsubHydrate = useWorkspaceStore.persist.onFinishHydration(async () => {
@@ -78,10 +157,18 @@ const Dashboard = () => {
         const serverWorkspaces = await fetchWorkspacesFromServer();
         
         if (serverWorkspaces.length > 0) {
-          console.log("Setting workspaces from server (on hydrate):", serverWorkspaces);
-          useWorkspaceStore.getState().setWorkspace(serverWorkspaces);
-        }
-        else if (serverWorkspaces.length === 0 || serverWorkspaces === null) {
+          const clientWorkspaces = useWorkspaceStore.getState().workspaces || [];
+          const merged = mergeWorkspaces(serverWorkspaces, clientWorkspaces);
+          console.log("Merging server + client workspaces (on hydrate):", merged);
+          useWorkspaceStore.getState().setWorkspace(merged);
+
+          // Preserve current selection if possible
+          const prevCurrent = useWorkspaceStore.getState().currentWorkspace;
+          if (prevCurrent) {
+            const next = merged.find((w) => w.id === prevCurrent.id) || merged[0];
+            if (next) useWorkspaceStore.getState().setCurrentWorkspace(next);
+          }
+        } else {
           console.log("No server workspaces, initializing default (on hydrate)");
           await initializeDefaultWorkspace();
         }
@@ -96,11 +183,17 @@ const Dashboard = () => {
         const serverWorkspaces = await fetchWorkspacesFromServer();
         
         if (serverWorkspaces.length > 0) {
-          console.log("Setting workspaces from server (already hydrated):", serverWorkspaces);
-          useWorkspaceStore.getState().setWorkspace(serverWorkspaces);
-          
-          const defaultWs = serverWorkspaces.find((ws: any) => ws.isDefault);
-          useWorkspaceStore.getState().setCurrentWorkspace(defaultWs || serverWorkspaces[0]);
+          const clientWorkspaces = useWorkspaceStore.getState().workspaces || [];
+          const merged = mergeWorkspaces(serverWorkspaces, clientWorkspaces);
+          console.log("Merging server + client workspaces (already hydrated):", merged);
+          useWorkspaceStore.getState().setWorkspace(merged);
+
+          const prevCurrent = useWorkspaceStore.getState().currentWorkspace;
+          const defaultWs = merged.find((ws: any) => ws.isDefault);
+          const next = prevCurrent
+            ? merged.find((w) => w.id === prevCurrent.id) || defaultWs || merged[0]
+            : defaultWs || merged[0];
+          if (next) useWorkspaceStore.getState().setCurrentWorkspace(next);
         } else {
           console.log("No server workspaces, initializing default (already hydrated)");
           await initializeDefaultWorkspace();
