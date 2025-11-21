@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useUserStore from '../store/useUserInfo';
-import useWorkspaceStore from '../store/useWorkspaceStore';
+import useWorkspaceStore , {type Workspace} from '../store/useWorkspaceStore';
 import TrelloLogo from '../components/TrelloLogo';
 import pendingOps from '../hooks/useRunBackgroundOps';
 import './Dashboard.css';
 import getUserWorkspaceApi from '../api/getUserWorkspaceApi';
 import type { CreateTaskReq } from '../types/createTaskType';
 import type { Todo } from '../store/useWorkspaceStore';
+import createWorkspaceAPI from '../api/createWorkspaceApi';
+import { addPendingOperation } from '../store/indexDB/pendingOps/usePendingOps';
 
 // Goal interface - defines structure for goal items
 interface Goal {
@@ -238,7 +240,51 @@ const Dashboard = () => {
 
     if (fallback) state.setCurrentWorkspace(fallback);
   } else {
-    await initializeDefaultWorkspace();
+
+        // if done then success true to default workspace 
+    const defaultWorkspace: Workspace = {
+                id: "workspace_default",
+                name: "Default",
+                createdAt: new Date(),
+                isDefault: true,
+                todos: [],
+                goals: [],
+                initialNodes: [],
+                initialEdges: [],
+                status: "PENDING",
+      };
+
+      useWorkspaceStore.getState().setWorkspace([defaultWorkspace]);
+      useWorkspaceStore.getState().setCurrentWorkspace(defaultWorkspace);
+
+    // direct api call becauase background ops not running yet
+    const response: any = await createWorkspaceAPI({userId: userInfo?.userId || '', workspaceName: 'Default'});
+    if (response?.response?.success !== "true") {
+      console.error("Error creating default workspace on server:", response);
+      // if error then add pending background ops
+
+          await addPendingOperation({
+          id: `create_workspace_${Date.now()}`,
+          type: "CREATE_WORKSPACE",
+          status: "PENDING",
+          payload: {
+            workspaceName: 'Default',
+            userId: userInfo?.userId || '',
+          },
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+    }
+
+    // if all is good then update the workspace status to SUCCESS
+    const updatedWorkspace = useWorkspaceStore.getState().workspaces.find(ws => ws.id === defaultWorkspace.id);
+    if (updatedWorkspace) {
+      updatedWorkspace.status = "SUCCESS";
+
+      // Trigger state update
+      useWorkspaceStore.getState().setWorkspace([...useWorkspaceStore.getState().workspaces]);
+    }
+
   }
 
   setWorkspacesFetched(true);
@@ -274,10 +320,6 @@ const Dashboard = () => {
     }
 
   },[]);
-  
-  useEffect(() => {
-
-  })
   
   // Sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -575,7 +617,7 @@ const Dashboard = () => {
   // Logout and redirect to home
   const handleLogout = () => {
     // clearWorkspace();
-    useWorkspaceStore.getState().clearWorkspace();
+    // useWorkspaceStore.getState().clearWorkspace();
 
     // It means Clear the Persisted Storage of Workspace Store 
     useWorkspaceStore.persist.clearStorage(); 
