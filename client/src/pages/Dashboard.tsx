@@ -80,7 +80,12 @@ const Dashboard = () => {
 
       // Start with server workspaces and merge client data into them
       for (const sw of serverWorkspaces) {
-        const cw = clientWorkspaces.find((w) => w.id === sw.id);
+        // Try to find by ID first, then by name if it's a temp workspace
+        let cw = clientWorkspaces.find((w) => w.id === sw.id);
+        if (!cw) {
+          cw = clientWorkspaces.find(w => w.name === sw.name && w.id.startsWith('workspace_'));
+        }
+
         if (!cw) {
           // Ensure createdAt and nested dates are Date objects
           merged.push({
@@ -143,6 +148,8 @@ const Dashboard = () => {
       // Append client-only workspaces (e.g., offline-created with temp id)
       for (const cw of clientWorkspaces) {
         if (!serverById.has(cw.id)) {
+          // Prevent duplicates: if we already have a workspace with this name (merged from server), skip it
+          if (merged.some(mw => mw.name === cw.name)) continue;
           merged.push(cw);
         }
       }
@@ -226,9 +233,11 @@ const Dashboard = () => {
   const state = useWorkspaceStore.getState();
 
   if (serverWorkspaces.length > 0) {
+    // Server pe workspaces exist karte hain, directly use karo
     const clientWorkspaces = state.workspaces || [];
     const merged = mergeWorkspaces(serverWorkspaces, clientWorkspaces);
 
+    console.log("✅ Server workspaces found, using them:", merged);
     state.setWorkspace(merged);
 
     // Restore selection OR default
@@ -240,51 +249,72 @@ const Dashboard = () => {
 
     if (fallback) state.setCurrentWorkspace(fallback);
   } else {
+    // Only create default workspace if server pe kuch bhi nahi hai
+    console.log("⚠️ No server workspaces, creating default...");
+    
+    // Check if we already have a default workspace locally to avoid overwriting/duplicating
+    const existingDefault = state.workspaces.find(w => w.name === "Default");
+    if (existingDefault) {
+       console.log("✅ Found existing local default workspace, using it.");
+       state.setCurrentWorkspace(existingDefault);
+       setWorkspacesFetched(true);
+       return;
+    }
 
-        // if done then success true to default workspace 
     const defaultWorkspace: Workspace = {
-                id: "workspace_default",
-                name: "Default",
-                createdAt: new Date(),
-                isDefault: true,
-                todos: [],
-                goals: [],
-                initialNodes: [],
-                initialEdges: [],
-                status: "PENDING",
-      };
+      id: `workspace_${Date.now()}`, // Temporary ID
+      name: "Default",
+      createdAt: new Date(),
+      isDefault: true,
+      todos: [],
+      goals: [],
+      initialNodes: [],
+      initialEdges: [],
+      status: "PENDING",
+    };
 
-      useWorkspaceStore.getState().setWorkspace([defaultWorkspace]);
-      useWorkspaceStore.getState().setCurrentWorkspace(defaultWorkspace);
+    state.setWorkspace([defaultWorkspace]);
+    state.setCurrentWorkspace(defaultWorkspace);
 
-    // direct api call becauase background ops not running yet
-    const response: any = await createWorkspaceAPI({userId: userInfo?.userId || '', workspaceName: 'Default'});
-    if (response?.response?.success !== "true") {
-      console.error("Error creating default workspace on server:", response);
-      // if error then add pending background ops
+    try {
+      // Direct API call because background ops not running yet
+      const response: any = await createWorkspaceAPI({
+        userId: userInfo?.userId || '',
+        workspaceName: 'Default',
+      });
 
-          await addPendingOperation({
-          id: `create_workspace_${Date.now()}`,
-          type: "CREATE_WORKSPACE",
-          status: "PENDING",
-          payload: {
-            workspaceName: 'Default',
-            userId: userInfo?.userId || '',
-          },
-          timestamp: Date.now(),
-          retryCount: 0,
-        });
+      if (response?.response?.success === "true") {
+        // Update with server ID
+        const serverWorkspaceId = response.response.workspaceId;
+        const updatedWorkspace = {
+          ...defaultWorkspace,
+          id: serverWorkspaceId,
+          status: "SUCCESS",
+        };
+
+        state.setWorkspace([updatedWorkspace]);
+        state.setCurrentWorkspace(updatedWorkspace);
+        console.log("✅ Default workspace created on server:", serverWorkspaceId);
+      } else {
+        throw new Error("Server returned non-success");
+      }
+    } catch (error) {
+      console.error("❌ Error creating default workspace, queuing for background:", error);
+      
+      // Add to pending operations
+      await addPendingOperation({
+        id: `create_workspace_${defaultWorkspace.id}`,
+        type: "CREATE_WORKSPACE",
+        status: "PENDING",
+        payload: {
+          workspaceName: 'Default',
+          userId: userInfo?.userId || '',
+          tempId: defaultWorkspace.id,
+        },
+        timestamp: Date.now(),
+        retryCount: 0,
+      });
     }
-
-    // if all is good then update the workspace status to SUCCESS
-    const updatedWorkspace = useWorkspaceStore.getState().workspaces.find(ws => ws.id === defaultWorkspace.id);
-    if (updatedWorkspace) {
-      updatedWorkspace.status = "SUCCESS";
-
-      // Trigger state update
-      useWorkspaceStore.getState().setWorkspace([...useWorkspaceStore.getState().workspaces]);
-    }
-
   }
 
   setWorkspacesFetched(true);
@@ -292,6 +322,14 @@ const Dashboard = () => {
 
 
     initializeWorkspaces();
+
+    // // removing extra default workspace 
+    // const isExistingDefault = workspaces.find((ws) => ws.isDefault);
+    // if (isExistingDefault && workspaces.length > 1) {;
+    //   const extraDefaults = workspaces.filter((ws) =>  ws.isDefault && ws.id.startsWith('workspace_'));
+    //   extraDefaults.forEach((ws) => deleteWorkspace(ws.id));
+    // }
+
   }, [userInfo?.userId]);
 
   // Sync Means at some time of iterations we need to run pending operations
@@ -320,7 +358,7 @@ const Dashboard = () => {
     }
 
   },[]);
-  
+
   // Sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');

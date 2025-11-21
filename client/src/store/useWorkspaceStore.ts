@@ -350,10 +350,10 @@ const useWorkspaceStore = create<WorkspaceState>()(
       deleteWorkspace: async (id: string) => {
         const workspace = get().workspaces.find((ws) => ws.id === id);
 
-        if (workspace?.isDefault) {
-          alert("Cannot delete default workspace");
-          return;
-        }
+        // if (workspace?.isDefault) {
+        //   alert("Cannot delete default workspace");
+        //   return;
+        // }
 
         const oldWorkspaces = get().workspaces;
 
