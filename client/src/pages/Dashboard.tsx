@@ -80,12 +80,16 @@ const Dashboard = () => {
 
       // Start with server workspaces and merge client data into them
       for (const sw of serverWorkspaces) {
+
         // Try to find by ID first, then by name if it's a temp workspace
         let cw = clientWorkspaces.find((w) => w.id === sw.id);
+        
+        // If not found by ID, try matching by name for temp client workspaces (like temp IDs on creation)
         if (!cw) {
           cw = clientWorkspaces.find(w => w.name === sw.name && w.id.startsWith('workspace_'));
         }
 
+        // if still not then client dont have this workspace so just push server workspace after date conversion
         if (!cw) {
           // Ensure createdAt and nested dates are Date objects
           merged.push({
@@ -104,9 +108,13 @@ const Dashboard = () => {
         }
 
         // Merge todos by id; keep client-only todos (e.g., PENDING with temp id)
-        const serverTodos = sw.todos || [];
-        const serverTodoIds = new Set(serverTodos.map((t: any) => t.id));
-        const clientOnlyTodos = (cw.todos || []).filter((t: any) => !serverTodoIds.has(t.id));
+        const serverTodos = sw.todos || [];       // all server todos that server knows about
+        const serverTodoIds = new Set(serverTodos.map((t: any) => t.id)); // all server todo ids for faster lookpup 
+        const clientOnlyTodos = (cw.todos || []).filter((t: any) => !serverTodoIds.has(t.id)); // todos that server does not know about
+       
+        // Now merge , here we convert createdAt to Date objects
+        // dont confuse ... just converting [] of todos to object with date conversion 
+        // in last we get array of todo objects with date conversion 
         const mergedTodos = [
           ...serverTodos.map((t: any) => ({
             ...t,
