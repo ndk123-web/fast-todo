@@ -12,4 +12,5 @@ type Workspace struct {
 	WorkspaceName string             `bson:"workspaceName" json:"worskpaceName"`
 	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt     time.Time          `bson:"updatedAt" json:"updatedAt"`
+	Todos         []Todo             `bson:"todos,omitempty" json:"todos"`
 }

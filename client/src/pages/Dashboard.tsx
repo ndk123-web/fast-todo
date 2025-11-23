@@ -57,7 +57,16 @@ const Dashboard = () => {
         status: "SUCCESS",
         isDefault: (ws.worskpaceName || ws.workspaceName) === "Default",
         createdAt: new Date(ws.createdAt || Date.now()),
-        todos: ws.todos || [],
+        todos: (ws.todos || []).map((t: any) => ({
+          id: t._id,
+          text: t.task,
+          completed: t.done,
+          priority: t.priority || 'medium',
+          status: t.done ? 'completed' : 'not-started',
+          workspaceId: ws._id,
+          // Backend todo doesn't have createdAt yet, so we might miss it or it might be undefined
+          createdAt: t.createdAt ? new Date(t.createdAt) : undefined
+        })),
         goals: ws.goals || [],
         initialNodes: ws.initialNodes || [],
         initialEdges: ws.initialEdges || []

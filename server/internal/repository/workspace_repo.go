@@ -39,25 +39,61 @@ func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId st
 		return nil, err
 	}
 
-	// filter for finding only workspaces of user
-	filter := bson.M{"userId": oid}
+	// // filter for finding only workspaces of user
+	// filter := bson.M{"userId": oid}
 
-	// get the workspaces here
-	cursor, err := r.workspaceCollection.Find(ctx, filter)
+	// // get the workspaces here
+	// cursor, err := r.workspaceCollection.Find(ctx, filter)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// // fetch workspaces
+	// var workspaces []model.Workspace
+	// for cursor.Next(ctx) {
+	// 	var workspace model.Workspace
+	// 	cursor.Decode(&workspace)
+	// 	workspaces = append(workspaces, workspace)
+	// }
+
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.D{
+				{"userId", oid},
+			}},
+		},
+		{
+			{"$lookup", bson.D{
+				{"from", "todos"},
+				{"localField", "_id"},
+				{"foreignField", "workspaceId"},
+				{"as", "todos"},
+			}},
+		},
+		{
+			{"$sort", bson.D{
+				{"createdAt", 1},
+			}},
+		},
+	}
+
+	cursor, err := r.workspaceCollection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, err
 	}
 
-	// fetch workspaces
-	var workspaces []model.Workspace
+	var result []model.Workspace
 	for cursor.Next(ctx) {
-		var workspace model.Workspace
-		cursor.Decode(&workspace)
-		workspaces = append(workspaces, workspace)
+		var part model.Workspace
+		if err := cursor.Decode(&part); err != nil {
+			return nil, err
+		}
+		fmt.Println("Part: ", part)
+		result = append(result, part)
 	}
 
 	// finally return the workspaces
-	return workspaces, nil
+	return result, nil
 }
 
 type createWorkspaceInDb struct {
@@ -69,13 +105,13 @@ type createWorkspaceInDb struct {
 
 func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error) {
 	if userId == "" || workspaceName == "" {
-		return "",errors.New("User Email / workspaceName is Empty in Repo")
+		return "", errors.New("User Email / workspaceName is Empty in Repo")
 	}
 
 	// convert first string to objectId
 	oid, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 
 	// check if workspace already exists for user
@@ -88,10 +124,10 @@ func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string
 	// if no error, workspace exists
 	if err == nil {
 		//  Document found → duplicate
-		return "",errors.New("workspace already exists for this user")
+		return "", errors.New("workspace already exists for this user")
 	} else if !errors.Is(err, mongo.ErrNoDocuments) {
 		// Some DB issue
-		return "",err
+		return "", err
 	}
 
 	// structure for stroring inside db
@@ -105,7 +141,7 @@ func (r *workspaceRepository) CreateWorkspace(ctx context.Context, userId string
 	// insert inside db
 	insertResult, err := r.workspaceCollection.InsertOne(ctx, insertDoc)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 
 	// InsertId is interface {} and .(primitive.ObjectId) it means inside that there is value in form of ObjectId and using .Hex() we conver Object id into Readable Hex String
