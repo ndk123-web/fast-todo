@@ -71,6 +71,14 @@ func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId st
 			}},
 		},
 		{
+			{"$lookup", bson.D{
+				{"from", "goals"},
+				{"localField", "_id"},
+				{"foreignField", "workspaceId"},
+				{"as", "goals"},
+			}},
+		},
+		{
 			{"$sort", bson.D{
 				{"createdAt", 1},
 			}},

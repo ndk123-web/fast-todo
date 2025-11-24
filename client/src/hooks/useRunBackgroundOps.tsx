@@ -7,6 +7,7 @@ import createTaskApi from "../api/createTaskApi";
 import toggleTodoApi from "../api/toggleTaskApi";
 import updateTaskApi from "../api/updateTaskApi";
 import deleteTaskApi from "../api/deleteTaskApi";
+import addGoalApi from "../api/addGoalApi";
 
 const pendingOps = async () => {
     const ops = await getPendingOperations();
@@ -313,6 +314,65 @@ const pendingOps = async () => {
                 await removePendingOperation(op.id);
             }
             catch(error) {
+                console.error("Error processing pending operation:", error);
+                // Increment retry count
+                op.retryCount += 1;
+                // If retry count exceeds limit (e.g., 3), mark as FAILED
+                if (op.retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", op.id);
+                    // Remove from pending operations
+                    await removePendingOperation(op.id);
+                } else {
+                    // Update the retry count in pending operations
+                    await addPendingOperation(op);
+                }
+            }
+        }
+        else if (op.type === "ADD_GOAL" && op.status === "PENDING") {
+            try {
+                const response: any = await addGoalApi(op.payload)
+                
+                console.log("Response from addGoalApi:", response);
+                
+                if (response?.success !== "true") {
+                    throw new Error("Failed to add goal on server");
+                }
+                console.log("✅ Goal added");
+                
+                // if success remove from pending operations
+                await removePendingOperation(op.id);
+
+                // replace id with server id and update status to success in store
+                const newId = response?.response?._id;
+                const workspaceId = op.payload.workspaceId;
+                const tempId = op.payload.id; // we stored optimistic goal under this id
+                const allWorkspaces = useWorkspaceStore.getState().workspaces;
+                const updatedWorkspaces = allWorkspaces.map(ws => {
+                    if (ws.id !== workspaceId) return ws;
+                    const replaced = ws.goals.map(g =>
+                        g.id === tempId ? { ...g, id: newId || g.id, status: "SUCCESS" } : g
+                    );
+                    const seen = new Set<string>();
+                    const deduped = replaced.filter(g => {
+                        const key = String(g.id);
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                    return { ...ws, goals: deduped };
+                });
+                useWorkspaceStore.setState({ workspaces: updatedWorkspaces });
+
+                // Update currentWorkspace if applicable
+                const cw = useWorkspaceStore.getState().currentWorkspace;
+                if (cw?.id === workspaceId) {
+                    const updatedCw = updatedWorkspaces.find(w => w.id === workspaceId);
+                    if (updatedCw) {
+                        useWorkspaceStore.setState({ currentWorkspace: updatedCw });
+                    }
+                }
+            }
+            catch(error){
                 console.error("Error processing pending operation:", error);
                 // Increment retry count
                 op.retryCount += 1;

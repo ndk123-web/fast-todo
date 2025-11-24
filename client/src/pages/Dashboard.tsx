@@ -25,7 +25,7 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
   const {userInfo, signOutUser} = useUserStore();
-  const { workspaces, currentWorkspace, addWorkspace, editWorkspace, deleteWorkspace, setCurrentWorkspace, initializeDefaultWorkspace, addTodo, toggleTodoCompleted, deleteTodo: storeDeleteTodo, updateTodo } = useWorkspaceStore();
+  const { workspaces, currentWorkspace, addWorkspace, editWorkspace, deleteWorkspace, setCurrentWorkspace, addTodo, toggleTodoCompleted, deleteTodo: storeDeleteTodo, updateTodo, addGoal } = useWorkspaceStore();
   
   // Wait for hydration from IndexedDB
   const [isHydrated, setIsHydrated] = useState(false);
@@ -407,11 +407,7 @@ const Dashboard = () => {
   }, [currentWorkspace]);
 
   // Demo goals with progress tracking
-  const [goals, setGoals] = useState<Goal[]>([
-    { id: 1, title: 'Complete 50 tasks this month', progress: 32, target: 50, category: 'Productivity' },
-    { id: 2, title: 'Learn React Advanced Patterns', progress: 7, target: 10, category: 'Learning' },
-    { id: 3, title: 'Workout 20 days', progress: 14, target: 20, category: 'Health' },
-  ]);
+  const [goals, setGoals] = useState<any>(currentWorkspace?.goals ?? []);
 
   // States for adding new todos
   const [newTodo, setNewTodo] = useState('');
@@ -499,7 +495,7 @@ const Dashboard = () => {
   };
 
   // Handle adding new goal
-  const handleAddGoal = (e: React.FormEvent) => {
+  const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newGoal.title.trim() && newGoal.target && newGoal.category.trim()) {
       setGoals([...goals, {
@@ -509,6 +505,9 @@ const Dashboard = () => {
         target: parseInt(newGoal.target),
         category: newGoal.category
       }]);
+
+      await addGoal(currentWorkspace?.id || '', newGoal.title, newGoal.category, newGoal.target)
+
       setNewGoal({ title: '', target: '', category: '' });
       setShowAddGoal(false);
     }

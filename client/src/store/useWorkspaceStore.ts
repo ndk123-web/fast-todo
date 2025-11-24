@@ -10,6 +10,7 @@ import updateTaskApi from "../api/updateTaskApi";
 import { todo } from "node:test";
 import deleteTaskApi from "../api/deleteTaskApi";
 
+
 // Todo interface
 export interface Todo {
   id: string;
@@ -27,6 +28,8 @@ export interface Goal {
   title: string;
   description?: string;
   completed?: boolean;
+  target: string;
+  category: string;
   createdAt?: Date;
   workspaceId: string;
   status: string;
@@ -95,8 +98,11 @@ interface WorkspaceState {
   // Goal Actions - Optimistic Updates with API calls
   addGoal: (
     workspaceId: string,
-    goal: Omit<Goal, "id" | "createdAt" | "workspaceId">
+    goalTitle: string,
+    goalCategory: string,
+    goalTarget: string
   ) => Promise<void>;
+
   updateGoal: (
     workspaceId: string,
     goalId: string,
@@ -818,14 +824,19 @@ const useWorkspaceStore = create<WorkspaceState>()(
       // ============= GOAL ACTIONS =============
       addGoal: async (
         workspaceId: string,
-        goal: Omit<Goal, "id" | "createdAt" | "workspaceId">
+        goalTitle: string,
+        goalCategory: string,
+        goalTarget: string
       ) => {
         const tempId = `goal_${Date.now()}`;
         const newGoal: Goal = {
-          ...goal,
+          title: goalTitle,
+          target: goalTarget,
+          category: goalCategory,
           id: tempId,
           workspaceId,
           createdAt: new Date(),
+          status: "PENDING",
         };
 
         const oldWorkspaces = get().workspaces;
@@ -849,9 +860,32 @@ const useWorkspaceStore = create<WorkspaceState>()(
         }
 
         try {
-          // API call
-          // const response = await createGoalAPI({ ...newGoal, workspaceId });
-          console.log("✅ Goal created:", goal.title);
+          const userId = useUserStore.getState().userInfo?.userId;
+
+          if (!userId) throw new Error("User not logged in");
+          if (!workspaceId) throw new Error("Workspace ID is required");
+          if (!goalTitle) throw new Error("Goal title cannot be empty");
+          if (!goalCategory) throw new Error("Goal category cannot be empty");
+          if (!goalTarget) throw new Error("Goal target cannot be empty");
+
+          // Added Operation to pending Queue
+          await addPendingOperation({
+            id: `ADD_GOAL_${Date.now}`,
+            type: "ADD_GOAL",
+            status: "PENDING",
+            payload: {
+              id: tempId,
+              workspaceId: workspaceId,
+              goalName: goalTitle,
+              category: goalCategory,
+              targetDays: goalTarget,
+              userId: userId,
+            },
+            timestamp: Date.now(),
+            retryCount: 0,
+          });
+
+          console.log("✅ Goal creation queued");
         } catch (error) {
           console.error("❌ Failed to create goal:", error);
           set({ workspaces: oldWorkspaces });

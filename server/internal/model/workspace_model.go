@@ -13,4 +13,5 @@ type Workspace struct {
 	CreatedAt     time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt     time.Time          `bson:"updatedAt" json:"updatedAt"`
 	Todos         []Todo             `bson:"todos,omitempty" json:"todos"`
+	Goals         []Goals            `bson:"goals,omitempty" json:"goals"`
 }
