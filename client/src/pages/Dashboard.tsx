@@ -13,10 +13,10 @@ import { addPendingOperation } from '../store/indexDB/pendingOps/usePendingOps';
 
 // Goal interface - defines structure for goal items
 interface Goal {
-  id: number;
+  _id: string;
   title: string;
-  progress: number;
-  target: number;
+  currentTarget: number;
+  targetDays: number;
   category: string;
 }
 
@@ -137,8 +137,8 @@ const Dashboard = () => {
 
         // Merge goals similarly
         const serverGoals = sw.goals || [];
-        const serverGoalIds = new Set(serverGoals.map((g: any) => g.id));
-        const clientOnlyGoals = (cw.goals || []).filter((g: any) => !serverGoalIds.has(g.id));
+        const serverGoalIds = new Set(serverGoals.map((g: any) => g._id));
+        const clientOnlyGoals = (cw.goals || []).filter((g: any) => !serverGoalIds.has(g._id));
         const mergedGoals = [
           ...serverGoals.map((g: any) => ({
             ...g,
@@ -424,7 +424,7 @@ const Dashboard = () => {
   const [editTodoPriority, setEditTodoPriority] = useState<'low' | 'medium' | 'high'>('medium');
   
   // States for editing goals
-  const [editingGoal, setEditingGoal] = useState<number | null>(null);
+  const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [editGoalData, setEditGoalData] = useState({ title: '', target: '', category: '' });
   
   // Layout view state - grid or list
@@ -608,9 +608,10 @@ const Dashboard = () => {
 
   // Increase goal progress by 1 (max = target)
   const incrementGoal = (id: number) => {
+    console.log("Incrementing goal with id:", id);
     setGoals(goals.map(goal => 
-      goal.id === id && goal.progress < goal.target
-        ? { ...goal, progress: goal.progress + 1 }
+      goal._id === id && goal.currentTarget < goal.targetDays
+        ? { ...goal, currentTarget: goal.currentTarget + 1 }
         : goal
     ));
   };
@@ -618,8 +619,8 @@ const Dashboard = () => {
   // Decrease goal progress by 1 (min = 0)
   const decrementGoal = (id: number) => {
     setGoals(goals.map(goal => 
-      goal.id === id && goal.progress > 0
-        ? { ...goal, progress: goal.progress - 1 }
+      goal._id === id && goal.currentTarget > 0
+        ? { ...goal, currentTarget: goal.currentTarget - 1 }
         : goal
     ));
   };
@@ -1544,11 +1545,11 @@ const Dashboard = () => {
               {/* Goals List - displays all goals */}
               <div className={`goals-list ${goalsViewLayout === 'list' ? 'list-view' : ''}`}>
                 {(showAllGoals ? goals : goals.slice(0, GOALS_DISPLAY_LIMIT)).map(goal => {
-                  const percentage = Math.round((goal.progress / goal.target) * 100);
+                  const percentage = Math.round((goal.currentTarget / goal.targetDays) * 100);
                   return (
-                    <div key={goal.id} className="goal-card">
+                    <div key={goal._id} className="goal-card">
                       {/* Edit mode - shows when pencil icon is clicked */}
-                      {editingGoal === goal.id ? (
+                      {editingGoal === goal._id ? (
                         <div className="goal-edit-form">
                           <input
                             type="text"
@@ -1613,7 +1614,7 @@ const Dashboard = () => {
                               {/* Delete button */}
                               <button 
                                 className="goal-delete-icon"
-                                onClick={() => deleteGoal(goal.id)}
+                                onClick={() => deleteGoal(goal._id)}
                               >
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                   <path d="M2 4H14M12.6667 4V13.3333C12.6667 14 12 14.6667 11.3333 14.6667H4.66667C4 14.6667 3.33333 14 3.33333 13.3333V4M5.33333 4V2.66667C5.33333 2 6 1.33333 6.66667 1.33333H9.33333C10 1.33333 10.6667 2 10.6667 2.66667V4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1630,13 +1631,13 @@ const Dashboard = () => {
                           </div>
                           {/* Progress stats and increment/decrement buttons */}
                           <div className="goal-stats">
-                            <span className="goal-stat">{goal.progress} / {goal.target}</span>
+                            <span className="goal-stat">{goal.currentTarget} / {goal.targetDays}</span>
                             <div className="goal-actions">
                               {/* Decrement button */}
                               <button 
                                 className="goal-action-btn"
-                                onClick={() => decrementGoal(goal.id)}
-                                disabled={goal.progress === 0}
+                                onClick={() => decrementGoal(goal._id)}
+                                disabled={goal.currentTarget === 0}
                               >
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                   <path d="M4 8H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -1645,8 +1646,8 @@ const Dashboard = () => {
                               {/* Increment button */}
                               <button 
                                 className="goal-action-btn primary"
-                                onClick={() => incrementGoal(goal.id)}
-                                disabled={goal.progress >= goal.target}
+                                onClick={() => incrementGoal(goal._id)}
+                                disabled={goal.currentTarget >= goal.targetDays}
                               >
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                   <path d="M8 4V12M4 8H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
