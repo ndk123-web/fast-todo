@@ -14,6 +14,8 @@ type GoalRepository interface {
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
 	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
+	IncreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
+	DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
 }
 
 type goalRepository struct {
@@ -140,6 +142,58 @@ func (r *goalRepository) DeleteUserGoal(ctx context.Context, goalId string) (boo
 
 	if deletedRes.DeletedCount == 0 {
 		return false, errors.New("Documents Not Found")
+	}
+
+	return true, nil
+}
+
+func (r *goalRepository) IncreamentGoalProgress(ctx context.Context, goalId string) (bool, error) {
+	if goalId == "" {
+		return false, errors.New("Goal Id is Empty in Repository")
+	}
+
+	// convert string -> ObjectId
+	oid, err := primitive.ObjectIDFromHex(goalId)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{"_id": oid}
+	update := bson.M{"$inc": bson.M{"currentTarget": 1}}
+
+	updatedRes, err := r.goalCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return false, err
+	}
+
+	if updatedRes.MatchedCount == 0 {
+		return false, errors.New("GoalId Document Not Found")
+	}
+
+	return true, nil
+}
+
+func (r *goalRepository) DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error) {
+	if goalId == "" {
+		return false, errors.New("Goal Id is Empty in Repository")
+	}
+
+	// convert string -> ObjectId
+	oid, err := primitive.ObjectIDFromHex(goalId)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{"_id": oid}
+	update := bson.M{"$inc": bson.M{"currentTarget": -1}}
+
+	updatedRes, err := r.goalCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return false, err
+	}
+
+	if updatedRes.MatchedCount == 0 {
+		return false, errors.New("GoalId Document Not Found")
 	}
 
 	return true, nil

@@ -14,6 +14,8 @@ type GoalHandler interface {
 	CreateUserGoal(w http.ResponseWriter, r *http.Request)
 	UpdateUserGoal(w http.ResponseWriter, r *http.Request)
 	DeleteUserGoal(w http.ResponseWriter, r *http.Request)
+	IncreamentGoalProgress(w http.ResponseWriter, r *http.Request)
+	DecreamentGoalProgress(w http.ResponseWriter, r *http.Request)
 }
 
 type goalHandler struct {
@@ -115,6 +117,42 @@ func (h *goalHandler) DeleteUserGoal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success Delete Goal"})
+}
+
+func (h *goalHandler) IncreamentGoalProgress(w http.ResponseWriter, r *http.Request) {
+	goalId := r.PathValue("goalId")
+
+	if goalId == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Goal Id is Empty In Handler", "success": "false"})
+		return
+	}
+
+	isUpdated, err := h.service.IncreamentGoalProgress(context.Background(), goalId)
+
+	if err != nil || !isUpdated {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Increament Goal Progress", "success": "true"})
+}
+
+func (h *goalHandler) DecreamentGoalProgress(w http.ResponseWriter, r *http.Request) {
+	goalId := r.PathValue("goalId")
+
+	if goalId == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Goal Id is Empty In Handler", "success": "false"})
+		return
+	}
+
+	isUpdated, err := h.service.DecreamentGoalProgress(context.Background(), goalId)
+
+	if err != nil || !isUpdated {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Decreament Goal Progress", "success": "true"})
 }
 
 func NewGoalHandler(service service.GoalService) GoalHandler {
