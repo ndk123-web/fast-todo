@@ -30,6 +30,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const {userInfo, signOutUser} = useUserStore();
   const { workspaces, currentWorkspace, addWorkspace, editWorkspace, deleteWorkspace, setCurrentWorkspace, addTodo, toggleTodoCompleted, deleteTodo: storeDeleteTodo, updateTodo, addGoal } = useWorkspaceStore();
+  // Flag to avoid re-hydration logic firing during logout (prevents default workspace recreation)
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // Wait for hydration from IndexedDB
   const [isHydrated, setIsHydrated] = useState(false);
@@ -257,6 +259,10 @@ const Dashboard = () => {
     // };
 
     const initializeWorkspaces = async () => {
+  // Skip initialization if logging out or no user
+  if (isLoggingOut || !userInfo?.userId) {
+    return;
+  }
   // 1. Hydration wait kare -> then run
   if (!useWorkspaceStore.persist.hasHydrated()) {
     await new Promise<void>((resolve) => {
@@ -708,18 +714,35 @@ const Dashboard = () => {
     setShowWorkspaceMenu(showWorkspaceMenu === workspaceId ? null : workspaceId);
   };
 
-  // Logout and redirect to home
-  const handleLogout = () => {
-  
-    // Clear the Workspace Store in Zustand
-    useWorkspaceStore.getState().clearWorkspace();
-
-    // It means Clear the Persisted Storage of Workspace Store 
-    useWorkspaceStore.persist.clearStorage(); 
-
-    clearPendingOperations();
+  // Proper logout: clear in-memory state, persisted key, pending ops DB, then navigate
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    const store = useWorkspaceStore.getState();
+    // Clear in-memory state first
+    store.clearWorkspace();
+    // Sign out & navigate quickly to unmount Dashboard (closes active IndexedDB usage)
     signOutUser();
     navigate('/');
+
+    // Defer heavy cleanup to next tick to avoid race with component effects
+    setTimeout(async () => {
+      try {
+        await useWorkspaceStore.persist.clearStorage();
+        console.log('✅ Persist storage cleared');
+      } catch (e) {
+        console.warn('⚠️ Failed clearing persist storage', e);
+      }
+      try {
+        const req = indexedDB.deleteDatabase('workspaceDB');
+        req.onsuccess = () => console.log('✅ workspaceDB deleted');
+        req.onerror = (ev) => console.warn('⚠️ workspaceDB delete error', ev);
+        req.onblocked = () => console.warn('⚠️ workspaceDB delete blocked (another open connection)');
+      } catch (e) {
+        console.warn('⚠️ deleteDatabase threw synchronously', e);
+      }
+      await clearPendingOperations();
+      console.log('✅ Pending operations cleared');
+    }, 50);
   };
 
   // Calculate comprehensive statistics for stat cards
