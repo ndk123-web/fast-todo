@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,7 +16,7 @@ type GoalRepository interface {
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
 	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
-	IncreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
+	IncreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
 	DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
 }
 
@@ -147,7 +149,7 @@ func (r *goalRepository) DeleteUserGoal(ctx context.Context, goalId string) (boo
 	return true, nil
 }
 
-func (r *goalRepository) IncreamentGoalProgress(ctx context.Context, goalId string) (bool, error) {
+func (r *goalRepository) IncreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error) {
 	if goalId == "" {
 		return false, errors.New("Goal Id is Empty in Repository")
 	}
@@ -159,7 +161,10 @@ func (r *goalRepository) IncreamentGoalProgress(ctx context.Context, goalId stri
 	}
 
 	filter := bson.M{"_id": oid}
-	update := bson.M{"$inc": bson.M{"currentTarget": 1}}
+	// Use atomic increment operation instead of find + update
+	update := bson.M{"$inc": bson.M{"currentTarget": count}}
+
+	fmt.Println("Count in Repo: ", count)
 
 	updatedRes, err := r.goalCollection.UpdateOne(ctx, filter, update)
 	if err != nil {

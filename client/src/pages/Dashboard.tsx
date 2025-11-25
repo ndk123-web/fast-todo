@@ -622,6 +622,9 @@ const Dashboard = () => {
       target: goal.targetDays?.toString?.() || goal.target?.toString?.() || '',
       category: goal.category
     });
+
+    // after that add for background processs after for 2 seconds setTimeout(() => {
+
   };
 
   // Save edited goal with updated values
@@ -653,12 +656,24 @@ const Dashboard = () => {
   };
 
   // Increase goal progress by 1 (max = target)
-  const incrementGoal = (id: string) => {
+  const incrementGoal = async (id: string) => {
     setGoals(goals.map((goal: any) => 
       goal.id === id && goal.currentTarget < (goal.targetDays || 1)
         ? { ...goal, currentTarget: (goal.currentTarget || 0) + 1 }
         : goal
     ));
+ 
+    await addPendingOperation({
+      id: `increament_goal_${Date.now()}`,
+      type: "INCREAMENT_GOAL",
+      status: "PENDING",
+      payload: {
+        goalId: id,
+        count: 1
+      },
+      timestamp: Date.now(),
+      retryCount: 0,
+    });
   };
 
   // Decrease goal progress by 1 (min = 0)
@@ -1611,10 +1626,11 @@ const Dashboard = () => {
                   const safeTarget = isNaN(numericTarget) || numericTarget <= 0 ? 1 : numericTarget;
                   const current = typeof goal.currentTarget === 'number' ? goal.currentTarget : 0;
                   const percentage = Math.min(100, Math.max(0, Math.round((current / safeTarget) * 100)));
+                  console.log("Goals List Rendering: ", goals);
                   return (
                     <div key={goal._id || goal.id} className="goal-card">
                       {/* Edit mode - shows when pencil icon is clicked */}
-                      {editingGoal === goal._id ? (
+                      {editingGoal === goal.id ? (
                         <div className="goal-edit-form">
                           <input
                             type="text"
@@ -1701,7 +1717,7 @@ const Dashboard = () => {
                               {/* Decrement button */}
                               <button 
                                 className="goal-action-btn"
-                                onClick={() => decrementGoal(goal._id)}
+                                onClick={() => decrementGoal(goal.id)}
                                 disabled={goal.currentTarget === 0}
                               >
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -1711,7 +1727,7 @@ const Dashboard = () => {
                               {/* Increment button */}
                               <button 
                                 className="goal-action-btn primary"
-                                onClick={() => incrementGoal(goal._id)}
+                                onClick={() => incrementGoal(goal.id)}
                                 disabled={goal.currentTarget >= goal.targetDays}
                               >
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

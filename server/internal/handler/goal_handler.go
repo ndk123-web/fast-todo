@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/ndk123-web/fast-todo/internal/service"
 	"net/http"
 	"strconv"
-
-	"github.com/ndk123-web/fast-todo/internal/service"
 )
 
 type GoalHandler interface {
@@ -119,15 +119,42 @@ func (h *goalHandler) DeleteUserGoal(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success Delete Goal"})
 }
 
+type increamentDecreamentGoalBody struct {
+	Count string `json:"count"`
+}
+
 func (h *goalHandler) IncreamentGoalProgress(w http.ResponseWriter, r *http.Request) {
 	goalId := r.PathValue("goalId")
+
+	var reqBody increamentDecreamentGoalBody
+
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		fmt.Println("Req Body: ", reqBody)
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
 
 	if goalId == "" {
 		json.NewEncoder(w).Encode(map[string]string{"Error": "Goal Id is Empty In Handler", "success": "false"})
 		return
 	}
 
-	isUpdated, err := h.service.IncreamentGoalProgress(context.Background(), goalId)
+	if reqBody.Count == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Count is Zero in Handler", "success": "false"})
+		return
+	}
+
+	fmt.Println("Count: ", reqBody.Count)
+
+	count, err := strconv.ParseInt(reqBody.Count, 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Count Parse Error in Handler", "success": "false"})
+		return
+	}
+
+	fmt.Println("Count after conversion", count)
+
+	isUpdated, err := h.service.IncreamentGoalProgress(context.Background(), goalId, count)
 
 	if err != nil || !isUpdated {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})

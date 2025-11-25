@@ -8,16 +8,19 @@ import toggleTodoApi from "../api/toggleTaskApi";
 import updateTaskApi from "../api/updateTaskApi";
 import deleteTaskApi from "../api/deleteTaskApi";
 import addGoalApi from "../api/addGoalApi";
+import increamentGoalApi from "../api/increamentGoalApi";
+
+let increamentGoalCount = 0;
 
 const pendingOps = async () => {
     const ops = await getPendingOperations();
     console.log("Pending Operations fetched:", ops);
 
-    for (let op of ops) {
-        if (op.type === "CREATE_WORKSPACE" && op.status === "PENDING") {
+    for (let op = 0 ; op < ops.length; op++) {
+        if (ops[op].type === "CREATE_WORKSPACE" && ops[op].status === "PENDING") {
             // call create workspace API
             try {
-                const response: any = await createWorkspaceAPI(op.payload);
+                const response: any = await createWorkspaceAPI(ops[op].payload);
                 
                 if (response?.response.success !== "true") {
                     throw new Error("Failed to create workspace on server");
@@ -30,7 +33,7 @@ const pendingOps = async () => {
                 // Update workspace ID with the one from server and set status to SUCCESS
                 const currentWorkspaces = useWorkspaceStore.getState().workspaces;
                 const updatedWorkspaces = currentWorkspaces.map((ws) =>
-                    ws.id === op.payload.tempId
+                    ws.id === ops[op].payload.tempId
                         ? { ...ws, id: workspaceIdFromServer, status: "SUCCESS" }
                         : ws
                 );
@@ -40,7 +43,7 @@ const pendingOps = async () => {
 
                 // If this was the current workspace, update it too
                 const currentWorkspace = useWorkspaceStore.getState().currentWorkspace;
-                if (currentWorkspace?.id === op.payload.tempId) {
+                if (currentWorkspace?.id === ops[op].payload.tempId) {
                     const updatedCurrentWorkspace = updatedWorkspaces.find(
                         (ws) => ws.id === workspaceIdFromServer
                     );
@@ -52,39 +55,39 @@ const pendingOps = async () => {
                 }
 
                 // If successful, remove from pending operations
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
                 
             } catch(error) {
                 console.error("Error processing pending operation:", error);
                 
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
                 
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     
                     // Update workspace status to FAILED in store
                     const currentWorkspaces = useWorkspaceStore.getState().workspaces;
                     const updatedWorkspaces = currentWorkspaces.map((ws) =>
-                        ws.id === op.payload.tempId
+                        ws.id === ops[op].payload.tempId
                             ? { ...ws, status: "FAILED" }
                             : ws
                     );
                     useWorkspaceStore.setState({ workspaces: updatedWorkspaces });
                     
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
                 continue; // skip to next operation
             }
         }   
-        else if (op.type === "UPDATE_WORKSPACE" && op.status === "PENDING") {
+        else if (ops[op].type === "UPDATE_WORKSPACE" && ops[op].status === "PENDING") {
             try {
-                const response: any = await updateWorkspaceAPI(op.payload);
+                const response: any = await updateWorkspaceAPI(ops[op].payload);
                 console.log("Update Workspace API response:", response?.response);
 
                 if (response?.response !== "Success") {
@@ -97,8 +100,8 @@ const pendingOps = async () => {
                 // if success update status to success
                 const currentWorkspaces = useWorkspaceStore.getState().workspaces;
                 const updatedWorkspaces = currentWorkspaces.map((ws) =>
-                    ws.id === op.id
-                        ? { ...ws, name: op.payload.updatedWorkspaceName, status: "SUCCESS" }
+                    ws.id === ops[op].id
+                        ? { ...ws, name: ops[op].payload.updatedWorkspaceName, status: "SUCCESS" }
                         : ws
                 );
 
@@ -107,9 +110,9 @@ const pendingOps = async () => {
 
                 // If this was the current workspace, update it too
                 const currentWorkspace = useWorkspaceStore.getState().currentWorkspace;
-                if (currentWorkspace?.id === op.id) {
+                if (currentWorkspace?.id === ops[op].id) {
                     const updatedCurrentWorkspace = updatedWorkspaces.find(
-                        (ws) => ws.id === op.id
+                        (ws) => ws.id === ops[op].id
                     );
                     if (updatedCurrentWorkspace) {
                         useWorkspaceStore.setState({
@@ -119,39 +122,39 @@ const pendingOps = async () => {
                 }
 
                 // Remove from pending operations after success
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
             }
            catch(error) {
                 console.error("Error processing pending operation:", error);
                 
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
                 
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     
                     // Update workspace status to FAILED in store
                     const currentWorkspaces = useWorkspaceStore.getState().workspaces;
                     const updatedWorkspaces = currentWorkspaces.map((ws) =>
-                        ws.id === op.id
+                        ws.id === ops[op].id
                             ? { ...ws, status: "FAILED" }
                             : ws
                     );
                     useWorkspaceStore.setState({ workspaces: updatedWorkspaces });
                     
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
                 continue; // skip to next operation
             }
         }
-        else if (op.type === "DELETE_WORKSPACE" && op.status === "PENDING") {
+        else if (ops[op].type === "DELETE_WORKSPACE" && ops[op].status === "PENDING") {
             try {
-                const response: any = await deleteWorkspaceAPI(op.payload);
+                const response: any = await deleteWorkspaceAPI(ops[op].payload);
                 console.log("Delete Workspace API response:", response);
 
                 if (response?.response !== "Success") {
@@ -164,24 +167,24 @@ const pendingOps = async () => {
             catch(error) {
                 console.error("Error processing pending operation:", error);
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
 
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
 
                 continue; // skip to next operation
             }
         }
-        else if (op.type === "CREATE_TODO" && op.status === "PENDING") {
+        else if (ops[op].type === "CREATE_TODO" && ops[op].status === "PENDING") {
             try {
-                const response: any = await createTaskApi(op.payload);
+                const response: any = await createTaskApi(ops[op].payload);
                 console.log("Create Task API response:", response);
 
                 if (response?.success !== "true") {
@@ -190,8 +193,8 @@ const pendingOps = async () => {
 
                 const serverTodo = response.response;
                 const newId = serverTodo?._id;
-                const workspaceId = op.payload.workspaceId;
-                const tempId = op.payload.id; // we stored optimistic todo under this id
+                const workspaceId = ops[op].payload.workspaceId;
+                const tempId = ops[op].payload.id; // we stored optimistic todo under this id
 
                 // Update workspaces array (replace tempId with server id and dedupe by id)
                 const allWorkspaces = useWorkspaceStore.getState().workspaces;
@@ -220,15 +223,15 @@ const pendingOps = async () => {
                     }
                 }
 
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
             } catch (error) {
                 console.error("Error processing pending operation:", error);
-                op.retryCount += 1;
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                ops[op].retryCount += 1;
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
 
-                    const workspaceId = op.payload.workspaceId;
-                    const tempId = op.payload.id;
+                    const workspaceId = ops[op].payload.workspaceId;
+                    const tempId = ops[op].payload.id;
                     const allWorkspaces = useWorkspaceStore.getState().workspaces;
                     const updatedWorkspaces = allWorkspaces.map(ws => ws.id === workspaceId ? {
                         ...ws,
@@ -241,15 +244,15 @@ const pendingOps = async () => {
                         if (updatedCw) useWorkspaceStore.setState({ currentWorkspace: updatedCw });
                     }
 
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
             }
         }
-        else if (op.type === "TOGGLE_TODO" && op.status === "PENDING") {
+        else if (ops[op].type === "TOGGLE_TODO" && ops[op].status === "PENDING") {
             try {
-                const apiRes: any = await toggleTodoApi(op.payload);
+                const apiRes: any = await toggleTodoApi(ops[op].payload);
                 // Backend returns { response: "true" } on success
     
                 if (apiRes?.response !== "true") {
@@ -259,24 +262,24 @@ const pendingOps = async () => {
                 console.log("✅ Todo toggled");
                 
                 // if success remove from pending operations
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
             }
             catch(error) {
                 console.error("Error processing pending operation:", error);
-                op.retryCount += 1;
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
-                    await removePendingOperation(op.id);
+                ops[op].retryCount += 1;
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
+                    await removePendingOperation(ops[op].id);
                 } else {
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
                 continue; // skip to next operation
             }
         }
-        else if (op.type === "UPDATE_TODO" && op.status === "PENDING") {
+        else if (ops[op].type === "UPDATE_TODO" && ops[op].status === "PENDING") {
             try {
                  // API call
-                const response: any = await updateTaskApi(op.payload)
+                const response: any = await updateTaskApi(ops[op].payload)
                 console.log("Update Task API response:", response);
 
                 if (response.success !== "true") {
@@ -285,52 +288,52 @@ const pendingOps = async () => {
                 console.log("Response from updateTaskApi:", response);
 
                 // if success remove from pending operations
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
             }
             catch(error) {
                 console.error("Error processing pending operation:", error);
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
             }        
         }
-        else if (op.type === "DELETE_TODO" && op.status === "PENDING") {
+        else if (ops[op].type === "DELETE_TODO" && ops[op].status === "PENDING") {
             try {
-                const response: any = await deleteTaskApi(op.payload);
+                const response: any = await deleteTaskApi(ops[op].payload);
                 console.log("Response from deleteTaskApi:", response);
 
                 if (response?.success !== "true") {
                     throw new Error("Failed to delete todo on server");
                 }
                 // if success remove from pending operations
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
             }
             catch(error) {
                 console.error("Error processing pending operation:", error);
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
             }
         }
-        else if (op.type === "ADD_GOAL" && op.status === "PENDING") {
+        else if (ops[op].type === "ADD_GOAL" && ops[op].status === "PENDING") {
             try {
-                const response: any = await addGoalApi(op.payload)
+                const response: any = await addGoalApi(ops[op].payload)
                 
                 console.log("Response from addGoalApi:", response);
                 
@@ -340,12 +343,12 @@ const pendingOps = async () => {
                 console.log("✅ Goal added");
                 
                 // if success remove from pending operations
-                await removePendingOperation(op.id);
+                await removePendingOperation(ops[op].id);
 
                 // replace id with server id and update status to success in store
                 const newId = response?.response?._id;
-                const workspaceId = op.payload.workspaceId;
-                const tempId = op.payload.id; // we stored optimistic goal under this id
+                const workspaceId = ops[op].payload.workspaceId;
+                const tempId = ops[op].payload.id; // we stored optimistic goal under this id
                 const allWorkspaces = useWorkspaceStore.getState().workspaces;
                 const updatedWorkspaces = allWorkspaces.map(ws => {
                     if (ws.id !== workspaceId) return ws;
@@ -375,19 +378,61 @@ const pendingOps = async () => {
             catch(error){
                 console.error("Error processing pending operation:", error);
                 // Increment retry count
-                op.retryCount += 1;
+                ops[op].retryCount += 1;
                 // If retry count exceeds limit (e.g., 3), mark as FAILED
-                if (op.retryCount >= 3) {
-                    console.error("Max retry count reached for operation:", op.id);
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
                     // Remove from pending operations
-                    await removePendingOperation(op.id);
+                    await removePendingOperation(ops[op].id);
                 } else {
                     // Update the retry count in pending operations
-                    await addPendingOperation(op);
+                    await addPendingOperation(ops[op]);
                 }
             }
         }
+        else if (ops[op].type === "INCREAMENT_GOAL" && ops[op].status === "PENDING") {
+
+            if (op >= 0 && op < ops.length - 1 && (ops[op+1].payload.goalId === ops[op].payload.goalId)) {
+                removePendingOperation(ops[op].id);
+                increamentGoalCount++;
+                continue;
+            }
+
+            try {
+                const response : any = await increamentGoalApi({goalId: ops[op].payload.goalId , count: String(increamentGoalCount + 1)});
+                console.log("Response from increamentGoalApi:", response);
+                console.log("Increament Goal Count:", increamentGoalCount);
+                
+                if (response?.success !== "true") {
+                    console.error("Failed to increament goal on server");
+                    continue; // skip to next operation
+                }
+
+                console.log("✅ Goal increamented");
+                
+                // if success remove from pending operations
+                await removePendingOperation(ops[op].id);
+            }
+            catch(error) {
+                console.error("Error processing pending operation:", error);
+                // Increment retry count
+                ops[op].retryCount += 1;
+                // If retry count exceeds limit (e.g., 3), mark as FAILED
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
+                    // Remove from pending operations
+                    await removePendingOperation(ops[op].id);
+                } else {
+                    // Update the retry count in pending operations
+                    await addPendingOperation(ops[op]);
+                }
+            }
+
+        }
     }
 }
+
+// reset count after processing all ops
+increamentGoalCount = 0;
 
 export default pendingOps;
