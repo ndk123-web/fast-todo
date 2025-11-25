@@ -25,3 +25,8 @@ export async function removePendingOperation(id: any) {
   const db = await getDB();
   return db.delete(STORE_NAME, id);
 }
+
+export async function clearPendingOperations() {
+  const db = await getDB();
+  return db.clear(STORE_NAME);
+}

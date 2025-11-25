@@ -5,11 +5,6 @@ import type { PersistStorage } from "zustand/middleware";
 import useUserStore from "./useUserInfo";
 import { addPendingOperation } from "./indexDB/pendingOps/usePendingOps";
 import type { CreateTaskReq } from "../types/createTaskType";
-import toggleTodoApi from "../api/toggleTaskApi";
-import updateTaskApi from "../api/updateTaskApi";
-import { todo } from "node:test";
-import deleteTaskApi from "../api/deleteTaskApi";
-
 
 // Todo interface
 export interface Todo {
@@ -24,11 +19,13 @@ export interface Todo {
 
 // Goal interface
 export interface Goal {
-  id: string;
+  id: string;               // local id (server may use _id)
   title: string;
   description?: string;
   completed?: boolean;
-  target: string;
+  target: string;           // original string input (days or metric)
+  targetDays?: number;      // normalized numeric target for progress calculations
+  currentTarget?: number;   // current progress value (0..targetDays)
   category: string;
   createdAt?: Date;
   workspaceId: string;
@@ -204,7 +201,12 @@ const useWorkspaceStore = create<WorkspaceState>()(
 
       clearWorkspace: async () => {
         // Clear state in memory
+        console.log("Clearing workspace store...");
+        
         set({ workspaces: [], currentWorkspace: null });
+
+        console.log("After Clear workspaces: ", get().workspaces);
+        console.log("After Clear workspaces: ", get().currentWorkspace);
       },
 
       setWorkspace: (workspaces: Workspace[]) => {
@@ -354,8 +356,6 @@ const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       deleteWorkspace: async (id: string) => {
-        const workspace = get().workspaces.find((ws) => ws.id === id);
-
         // if (workspace?.isDefault) {
         //   alert("Cannot delete default workspace");
         //   return;
@@ -829,9 +829,13 @@ const useWorkspaceStore = create<WorkspaceState>()(
         goalTarget: string
       ) => {
         const tempId = `goal_${Date.now()}`;
+        const parsedTarget = parseInt(goalTarget, 10);
+        const safeTargetDays = isNaN(parsedTarget) || parsedTarget <= 0 ? 1 : parsedTarget;
         const newGoal: Goal = {
           title: goalTitle,
           target: goalTarget,
+          targetDays: safeTargetDays,
+          currentTarget: 0,
           category: goalCategory,
           id: tempId,
           workspaceId,

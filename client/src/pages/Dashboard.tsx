@@ -9,15 +9,19 @@ import getUserWorkspaceApi from '../api/getUserWorkspaceApi';
 import type { CreateTaskReq } from '../types/createTaskType';
 import type { Todo } from '../store/useWorkspaceStore';
 import createWorkspaceAPI from '../api/createWorkspaceApi';
-import { addPendingOperation } from '../store/indexDB/pendingOps/usePendingOps';
+import { addPendingOperation, clearPendingOperations, getPendingOperations } from '../store/indexDB/pendingOps/usePendingOps';
 
 // Goal interface - defines structure for goal items
+// Align Goal interface with store (id not _id)
 interface Goal {
-  _id: string;
+  id: string;
   title: string;
-  currentTarget: number;
-  targetDays: number;
+  target?: string; // original string (optional for UI)
+  targetDays?: number;
+  currentTarget?: number;
   category: string;
+  status?: string;
+  createdAt?: Date;
 }
 
 
@@ -64,10 +68,24 @@ const Dashboard = () => {
           priority: t.priority || 'medium',
           status: t.done ? 'completed' : 'not-started',
           workspaceId: ws._id,
-          // Backend todo doesn't have createdAt yet, so we might miss it or it might be undefined
           createdAt: t.createdAt ? new Date(t.createdAt) : undefined
         })),
-        goals: ws.goals || [],
+        // Normalize server goals to have 'id'
+        goals: (ws.goals || []).map((g: any) => {
+          const rawTarget = g.targetDays ?? g.target ?? 0;
+            const numericTarget = typeof rawTarget === 'number' ? rawTarget : parseInt(rawTarget, 10);
+            const safeTargetDays = isNaN(numericTarget) || numericTarget <= 0 ? 1 : numericTarget;
+            return {
+              id: g._id,
+              title: g.goalName || g.title || '',
+              category: g.category || '',
+              target: rawTarget?.toString?.() || safeTargetDays.toString(),
+              targetDays: safeTargetDays,
+              currentTarget: typeof g.currentTarget === 'number' ? g.currentTarget : 0,
+              status: 'SUCCESS',
+              createdAt: g.createdAt ? new Date(g.createdAt) : new Date(),
+            } as Goal;
+        }),
         initialNodes: ws.initialNodes || [],
         initialEdges: ws.initialEdges || []
       }));
@@ -135,20 +153,20 @@ const Dashboard = () => {
           })),
         ];
 
-        // Merge goals similarly
-        const serverGoals = sw.goals || [];
-        const serverGoalIds = new Set(serverGoals.map((g: any) => g._id));
-        const clientOnlyGoals = (cw.goals || []).filter((g: any) => !serverGoalIds.has(g._id));
-        const mergedGoals = [
-          ...serverGoals.map((g: any) => ({
-            ...g,
-            createdAt: g?.createdAt ? new Date(g.createdAt) : undefined,
-          })),
-          ...clientOnlyGoals.map((g: any) => ({
-            ...g,
-            createdAt: g?.createdAt ? new Date(g.createdAt) : g.createdAt,
-          })),
-        ];
+        // Merge goals (normalize id) and avoid duplicates
+        const serverGoals = (sw.goals || []).map((g: any) => ({
+          ...g,
+          id: g.id || g._id, // ensure id
+          createdAt: g?.createdAt ? new Date(g.createdAt) : undefined,
+        }));
+        const serverGoalIds = new Set(serverGoals.map((g: any) => g.id));
+        const clientGoals = (cw.goals || []).map((g: any) => ({
+          ...g,
+          id: g.id || g._id, // normalize
+        }));
+        const clientOnlyGoals = clientGoals.filter((g: any) => !serverGoalIds.has(g.id));
+        const mergedGoals = [...serverGoals, ...clientOnlyGoals];
+        console.log("Merged Goals (deduped): ", mergedGoals);
 
         merged.push({
           ...sw,
@@ -160,6 +178,8 @@ const Dashboard = () => {
           status: sw.status || cw.status || "SUCCESS",
           isDefault: sw.isDefault ?? cw.isDefault,
         });
+
+        // console.log("Total Merged: ",merged)
       }
 
       // Append client-only workspaces (e.g., offline-created with temp id)
@@ -170,6 +190,11 @@ const Dashboard = () => {
           merged.push(cw);
         }
       }
+
+      console.log("Total Merged: ",merged)
+
+      // set updated currentWorkspace and workspaces array in store here if needed
+      useWorkspaceStore.getState().setWorkspace(merged);
 
       return merged;
     };
@@ -246,7 +271,21 @@ const Dashboard = () => {
   setIsHydrated(true);
 
   // 3. Fetch from server
-  const serverWorkspaces = await fetchWorkspacesFromServer();
+  let serverWorkspaces = await fetchWorkspacesFromServer();
+  // Filter out server workspaces queued for delete in pending ops (avoid reappearing after refresh)
+  try {
+    const ops = await getPendingOperations();
+    const toDeleteByName = new Set(
+      ops
+        .filter((op: any) => op.type === 'DELETE_WORKSPACE' && op.payload?.workspaceName)
+        .map((op: any) => op.payload.workspaceName)
+    );
+    if (toDeleteByName.size > 0) {
+      serverWorkspaces = serverWorkspaces.filter((sw: any) => !toDeleteByName.has(sw.name));
+    }
+  } catch (e) {
+    console.warn('Pending ops check failed; proceeding without delete filter:', e);
+  }
   const state = useWorkspaceStore.getState();
 
   if (serverWorkspaces.length > 0) {
@@ -319,18 +358,18 @@ const Dashboard = () => {
       console.error("❌ Error creating default workspace, queuing for background:", error);
       
       // Add to pending operations
-      await addPendingOperation({
-        id: `create_workspace_${defaultWorkspace.id}`,
-        type: "CREATE_WORKSPACE",
-        status: "PENDING",
-        payload: {
-          workspaceName: 'Default',
-          userId: userInfo?.userId || '',
-          tempId: defaultWorkspace.id,
-        },
-        timestamp: Date.now(),
-        retryCount: 0,
-      });
+      // await addPendingOperation({
+      //   id: `create_workspace_${defaultWorkspace.id}`,
+      //   type: "CREATE_WORKSPACE",
+      //   status: "PENDING",
+      //   payload: {
+      //     workspaceName: 'Default',
+      //     userId: userInfo?.userId || '',
+      //     tempId: defaultWorkspace.id,
+      //   },
+      //   timestamp: Date.now(),
+      //   retryCount: 0,
+      // });
     }
   }
 
@@ -408,6 +447,11 @@ const Dashboard = () => {
 
   // Demo goals with progress tracking
   const [goals, setGoals] = useState<any>(currentWorkspace?.goals ?? []);
+
+  // Keep goals state in sync with store selection (like todos)
+  useEffect(() => {
+    setGoals(currentWorkspace?.goals ?? []);
+  }, [currentWorkspace]);
 
   // States for adding new todos
   const [newTodo, setNewTodo] = useState('');
@@ -498,16 +542,9 @@ const Dashboard = () => {
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newGoal.title.trim() && newGoal.target && newGoal.category.trim()) {
-      setGoals([...goals, {
-        id: Date.now(),
-        title: newGoal.title,
-        progress: 0,
-        target: parseInt(newGoal.target),
-        category: newGoal.category
-      }]);
-
-      await addGoal(currentWorkspace?.id || '', newGoal.title, newGoal.category, newGoal.target)
-
+      // Delegate to store (store now normalizes targetDays/currentTarget)
+      await addGoal(currentWorkspace?.id || '', newGoal.title, newGoal.category, newGoal.target);
+      // Local state will sync via useEffect on currentWorkspace change
       setNewGoal({ title: '', target: '', category: '' });
       setShowAddGoal(false);
     }
@@ -567,8 +604,8 @@ const Dashboard = () => {
   };
 
   // Delete a goal
-  const deleteGoal = (id: number) => {
-    setGoals(goals.filter(goal => goal.id !== id));
+  const deleteGoal = (id: string) => {
+    setGoals(goals.filter((goal: any) => goal.id !== id));
   };
 
   // Start editing a goal - set edit mode with current values
@@ -576,7 +613,7 @@ const Dashboard = () => {
     setEditingGoal(goal.id);
     setEditGoalData({
       title: goal.title,
-      target: goal.target.toString(),
+      target: goal.targetDays?.toString?.() || goal.target?.toString?.() || '',
       category: goal.category
     });
   };
@@ -584,14 +621,17 @@ const Dashboard = () => {
   // Save edited goal with updated values
   const saveEditGoal = () => {
     if (editingGoal && editGoalData.title.trim() && editGoalData.target && editGoalData.category.trim()) {
-      setGoals(goals.map(goal => 
+      const nextTarget = parseInt(editGoalData.target, 10);
+      const safeTarget = isNaN(nextTarget) || nextTarget <= 0 ? 1 : nextTarget;
+      setGoals(goals.map((goal: any) => 
         goal.id === editingGoal 
           ? { 
               ...goal, 
               title: editGoalData.title,
-              target: parseInt(editGoalData.target),
+              targetDays: safeTarget,
+              target: safeTarget.toString(),
               category: editGoalData.category,
-              progress: Math.min(goal.progress, parseInt(editGoalData.target)) // Adjust progress if target changes
+              currentTarget: Math.min(goal.currentTarget ?? 0, safeTarget)
             }
           : goal
       ));
@@ -607,20 +647,19 @@ const Dashboard = () => {
   };
 
   // Increase goal progress by 1 (max = target)
-  const incrementGoal = (id: number) => {
-    console.log("Incrementing goal with id:", id);
-    setGoals(goals.map(goal => 
-      goal._id === id && goal.currentTarget < goal.targetDays
-        ? { ...goal, currentTarget: goal.currentTarget + 1 }
+  const incrementGoal = (id: string) => {
+    setGoals(goals.map((goal: any) => 
+      goal.id === id && goal.currentTarget < (goal.targetDays || 1)
+        ? { ...goal, currentTarget: (goal.currentTarget || 0) + 1 }
         : goal
     ));
   };
 
   // Decrease goal progress by 1 (min = 0)
-  const decrementGoal = (id: number) => {
-    setGoals(goals.map(goal => 
-      goal._id === id && goal.currentTarget > 0
-        ? { ...goal, currentTarget: goal.currentTarget - 1 }
+  const decrementGoal = (id: string) => {
+    setGoals(goals.map((goal: any) => 
+      goal.id === id && (goal.currentTarget || 0) > 0
+        ? { ...goal, currentTarget: (goal.currentTarget || 0) - 1 }
         : goal
     ));
   };
@@ -671,15 +710,14 @@ const Dashboard = () => {
 
   // Logout and redirect to home
   const handleLogout = () => {
-    // clearWorkspace();
-    // useWorkspaceStore.getState().clearWorkspace();
+  
+    // Clear the Workspace Store in Zustand
+    useWorkspaceStore.getState().clearWorkspace();
 
     // It means Clear the Persisted Storage of Workspace Store 
     useWorkspaceStore.persist.clearStorage(); 
 
-    // clear the ui state of workspace store
-    // useWorkspaceStore.getState().clearWorkspace();
-
+    clearPendingOperations();
     signOutUser();
     navigate('/');
   };
@@ -1544,10 +1582,14 @@ const Dashboard = () => {
 
               {/* Goals List - displays all goals */}
               <div className={`goals-list ${goalsViewLayout === 'list' ? 'list-view' : ''}`}>
-                {(showAllGoals ? goals : goals.slice(0, GOALS_DISPLAY_LIMIT)).map(goal => {
-                  const percentage = Math.round((goal.currentTarget / goal.targetDays) * 100);
+                {(showAllGoals ? goals : goals.slice(0, GOALS_DISPLAY_LIMIT)).map((goal: any) => {
+                  const rawTarget = goal.targetDays ?? goal.target ?? 0;
+                  const numericTarget = typeof rawTarget === 'number' ? rawTarget : parseInt(rawTarget, 10);
+                  const safeTarget = isNaN(numericTarget) || numericTarget <= 0 ? 1 : numericTarget;
+                  const current = typeof goal.currentTarget === 'number' ? goal.currentTarget : 0;
+                  const percentage = Math.min(100, Math.max(0, Math.round((current / safeTarget) * 100)));
                   return (
-                    <div key={goal._id} className="goal-card">
+                    <div key={goal._id || goal.id} className="goal-card">
                       {/* Edit mode - shows when pencil icon is clicked */}
                       {editingGoal === goal._id ? (
                         <div className="goal-edit-form">
