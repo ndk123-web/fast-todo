@@ -3,7 +3,7 @@ import Home from './pages/Home'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Dashboard from './pages/Dashboard'
-import FlowchartView from './pages/FlowchartView'
+import FlowchartViewNew from './pages/FlowchartViewNew'
 import Protected from './components/Protected'
 
 import './App.css'
@@ -23,7 +23,7 @@ function App() {
       } />
         <Route path="/flowchart" element={
           <Protected>
-            <FlowchartView />
+            <FlowchartViewNew />
         </Protected>
       } />
         <Route path="*" element={<Navigate to="/" replace />} />

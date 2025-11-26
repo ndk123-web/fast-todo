@@ -14,4 +14,6 @@ type Workspace struct {
 	UpdatedAt     time.Time          `bson:"updatedAt" json:"updatedAt"`
 	Todos         []Todo             `bson:"todos,omitempty" json:"todos"`
 	Goals         []Goals            `bson:"goals,omitempty" json:"goals"`
+	Nodes         any                `bson:"nodes,omitEmpty" json:"nodes,omitempty"`
+	Edges         any                `bson:"edges,omitEmpty" json:"edges,omitempty"`
 }

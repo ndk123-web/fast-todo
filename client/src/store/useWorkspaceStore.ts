@@ -797,7 +797,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
           // console.log("✅ Todo toggled");
 
           await addPendingOperation({
-            id: `toggle_todo_${Date.now}`,
+            id: `toggle_todo_${Date.now()}`,
             type: "TOGGLE_TODO",
             status: "PENDING",
             payload: {
