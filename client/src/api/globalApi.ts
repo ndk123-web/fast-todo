@@ -20,7 +20,38 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.warn("Unauthorized: maybe refresh token logic here...");
+      const userInfo = useUserStore.getState().userInfo;
+      if (userInfo?._refreshToken) {
+        try {
+          // Import dynamically to avoid circular dependency
+          const { default: refreshTokenApi } = await import('./refreshToken');
+          const refreshResponse = await refreshTokenApi(userInfo);
+          
+          if (refreshResponse?.success === "true") {
+            // Update tokens
+            useUserStore.getState().signinUser({
+              ...userInfo,
+              _accessToken: refreshResponse._accessToken,
+              _refreshToken: refreshResponse._refreshToken,
+            });
+            
+            // Update the authorization header for the retry
+            error.config.headers.Authorization = `Bearer ${refreshResponse._accessToken}`;
+            
+            // Retry original request
+            return api.request(error.config);
+          } else {
+            // Refresh failed, logout
+            useUserStore.getState().signOutUser();
+          }
+        } catch (refreshError) {
+          console.error("Refresh token error:", refreshError);
+          useUserStore.getState().signOutUser();
+        }
+      } else {
+        // No refresh token, logout
+        useUserStore.getState().signOutUser();
+      }
     }
     return Promise.reject(error);
   }

@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/golang-jwt/jwt"
 	"github.com/ndk123-web/fast-todo/internal/repository"
 	"github.com/ndk123-web/fast-todo/internal/service"
-	"net/http"
-	"time"
 )
 
 type UserHandler interface {
@@ -72,14 +74,19 @@ func (h *userHandler) SignUpUser(w http.ResponseWriter, r *http.Request) {
 
 // refresh token user handler
 func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	refreshToken, err := r.Cookie("_refresh_token")
-	if err != nil {
+	refreshToken := r.Header.Get("Authorization")
+
+	if refreshToken == "" {
 		http.Error(w, "No refresh token", http.StatusUnauthorized)
 		return
 	}
 
+	// Remove Bearer prefix if present
+	refreshToken = strings.TrimPrefix(refreshToken, "Bearer ")
+	refreshToken = strings.TrimSpace(refreshToken)
+
 	claims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(refreshToken.Value, claims, func(t *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(refreshToken, claims, func(t *jwt.Token) (interface{}, error) {
 		return []byte(service.JWTSECRET), nil
 	})
 
@@ -97,8 +104,17 @@ func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
 	tokenStr, _ := newAccess.SignedString([]byte(service.JWTSECRET))
-	json.NewEncoder(w).Encode(map[string]string{"accessToken": tokenStr})
+
+	// create refresh token too if needed
+	newRefresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"email": claims["email"],
+		"exp":   time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	refreshStr, _ := newRefresh.SignedString([]byte(service.JWTSECRET))
+
+	json.NewEncoder(w).Encode(map[string]string{"_accessToken": tokenStr, "_refreshToken": refreshStr, "success": "true"})
 }
 
 // sign in user handler

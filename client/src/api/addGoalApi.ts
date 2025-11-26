@@ -21,12 +21,15 @@ const addGoalApi = async (data: addGoalReq) => {
 
     console.log("Response from addGoalApi:", response);
 
-    if (response.status < 200 && response.status >= 300) {
+    if (response.status < 200 || response.status >= 300) {
       throw new Error("Failed to add goal");
     }
 
     return response.data;
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error in addGoalApi:", error);
+    throw error;
+  }
 };
 
 export default addGoalApi;
