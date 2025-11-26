@@ -657,12 +657,32 @@ const Dashboard = () => {
 
   // Increase goal progress by 1 (max = target)
   const incrementGoal = async (id: string) => {
-    setGoals(goals.map((goal: any) => 
+    // 1. UPDATE GOALS (local state) - Immediate UI feedback
+    const updatedGoals = goals?.map((goal: any) => 
       goal.id === id && goal.currentTarget < (goal.targetDays || 1)
         ? { ...goal, currentTarget: (goal.currentTarget || 0) + 1 }
         : goal
-    ));
- 
+    );
+    setGoals(updatedGoals);
+
+    // 2. UPDATE WORKSPACE STORE - Get current workspace and update it properly
+    const currentWS = useWorkspaceStore.getState().currentWorkspace;
+    if (currentWS) {
+      const updatedWorkspace = {
+        ...currentWS,
+        goals: updatedGoals
+      };
+      
+      // Update the full workspaces array with the modified workspace
+      const allWorkspaces = useWorkspaceStore.getState().workspaces.map(ws => 
+        ws.id === currentWS.id ? updatedWorkspace : ws
+      );
+      
+      useWorkspaceStore.getState().setWorkspace(allWorkspaces);
+      useWorkspaceStore.getState().setCurrentWorkspace(updatedWorkspace);
+    }
+
+    // 3. ADD PENDING OPERATION - For server sync
     await addPendingOperation({
       id: `increament_goal_${Date.now()}`,
       type: "INCREAMENT_GOAL",
@@ -677,12 +697,44 @@ const Dashboard = () => {
   };
 
   // Decrease goal progress by 1 (min = 0)
-  const decrementGoal = (id: string) => {
-    setGoals(goals.map((goal: any) => 
-      goal.id === id && (goal.currentTarget || 0) > 0
+  const decrementGoal = async (id: string) => {
+     // 1. UPDATE GOALS (local state) - Immediate UI feedback
+    const updatedGoals = goals?.map((goal: any) => 
+      goal.id === id && goal.currentTarget < (goal.targetDays || 1)
         ? { ...goal, currentTarget: (goal.currentTarget || 0) - 1 }
         : goal
-    ));
+    );
+    setGoals(updatedGoals);
+
+    // 2. UPDATE WORKSPACE STORE - Get current workspace and update it properly
+    const currentWS = useWorkspaceStore.getState().currentWorkspace;
+    if (currentWS) {
+      const updatedWorkspace = {
+        ...currentWS,
+        goals: updatedGoals
+      };
+      
+      // Update the full workspaces array with the modified workspace
+      const allWorkspaces = useWorkspaceStore.getState().workspaces.map(ws => 
+        ws.id === currentWS.id ? updatedWorkspace : ws
+      );
+      
+      useWorkspaceStore.getState().setWorkspace(allWorkspaces);
+      useWorkspaceStore.getState().setCurrentWorkspace(updatedWorkspace);
+    }
+
+    // 3. ADD PENDING OPERATION - For server sync
+    await addPendingOperation({
+      id: `decreament_goal_${Date.now()}`,
+      type: "DECREAMENT_GOAL",
+      status: "PENDING",
+      payload: {
+        goalId: id,
+        count: 1
+      },
+      timestamp: Date.now(),
+      retryCount: 0,
+    });
   };
 
   // Workspace handlers
@@ -963,7 +1015,7 @@ const Dashboard = () => {
                             <path d="M2 4.66667C2 4.31304 2.14048 3.97391 2.39052 3.72386C2.64057 3.47381 2.97971 3.33333 3.33333 3.33333H6L7.33333 5.33333H12.6667C13.0203 5.33333 13.3594 5.47381 13.6095 5.72386C13.8595 5.97391 14 6.31304 14 6.66667V11.3333C14 11.687 13.8595 12.0261 13.6095 12.2761C13.3594 12.5262 13.0203 12.6667 12.6667 12.6667H3.33333C2.97971 12.6667 2.64057 12.5262 2.39052 12.2761C2.14048 12.0261 2 11.687 2 11.3333V4.66667Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                           {/* Name could be long because we cant trust users for destroying the app */}
-                          <span className="workspace-name-text">{workspace.name.substring(0,15)}</span>
+                          <span className="workspace-name-text">{workspace.name?.substring(0,15) || 'Untitled'}</span>
                           {workspace.isDefault && <span className="workspace-badge">Default</span>}
                           {workspace.status === "FAILED" && <span className="workspace-badge-error">E</span>}
                           {workspace.status === "PENDING" && <span className="workspace-badge-pending">P</span>}
@@ -1092,7 +1144,7 @@ const Dashboard = () => {
               </svg>
               <div className="current-workspace-info">
                 <span className="current-workspace-label">Workspace</span>
-                <span className="current-workspace-name">{currentWorkspace?.name.substring(0,15) || 'Personal'}</span>
+                <span className="current-workspace-name">{currentWorkspace?.name?.substring(0,15) || 'Personal'}</span>
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ type GoalService interface {
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
 	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
 	IncreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
-	DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
+	DecreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
 }
 
 type goalService struct {
@@ -61,12 +61,12 @@ func (s *goalService) IncreamentGoalProgress(ctx context.Context, goalId string,
 	return s.repo.IncreamentGoalProgress(ctx, goalId, count)
 }
 
-func (s *goalService) DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error) {
+func (s *goalService) DecreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error) {
 	if goalId == "" {
 		return false, errors.New("Goal Id is Empty in Service")
 	}
 
-	return s.repo.DecreamentGoalProgress(ctx, goalId)
+	return s.repo.DecreamentGoalProgress(ctx, goalId, count)
 }
 
 func NewGoalService(repo repository.GoalRepository) GoalService {

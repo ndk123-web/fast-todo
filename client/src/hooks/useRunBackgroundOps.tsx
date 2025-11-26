@@ -9,8 +9,10 @@ import updateTaskApi from "../api/updateTaskApi";
 import deleteTaskApi from "../api/deleteTaskApi";
 import addGoalApi from "../api/addGoalApi";
 import increamentGoalApi from "../api/increamentGoalApi";
+import decreamentGoalApi from "../api/decreamentGoalApi";
 
 let increamentGoalCount = 0;
+let decreamentGoalCount = 0;
 
 const pendingOps = async () => {
     const ops = await getPendingOperations();
@@ -392,6 +394,7 @@ const pendingOps = async () => {
         }
         else if (ops[op].type === "INCREAMENT_GOAL" && ops[op].status === "PENDING") {
 
+            // batching increament operations
             if (op >= 0 && op < ops.length - 1 && (ops[op+1].payload.goalId === ops[op].payload.goalId)) {
                 removePendingOperation(ops[op].id);
                 increamentGoalCount++;
@@ -429,10 +432,50 @@ const pendingOps = async () => {
             }
 
         }
+        else if (ops[op].type === "DECREAMENT_GOAL" && ops[op].status === "PENDING") {
+            try {
+
+                // batching decreament operations
+                if (op >= 0 && op < ops.length - 1 && (ops[op+1].payload.goalId === ops[op].payload.goalId)) {
+                    removePendingOperation(ops[op].id);
+                    decreamentGoalCount++;
+                    continue;
+                }
+
+                // api call
+                const response : any = await decreamentGoalApi({goalId: ops[op].payload.goalId , count: String(decreamentGoalCount + 1)});
+                console.log("Response from decreamentGoalApi:", response);
+                console.log("Decreament Goal Count:", decreamentGoalCount);
+
+                if (response?.success !== "true") {
+                    console.error("Failed to decreament goal on server");
+                    continue; // skip to next operation
+                }
+                console.log("✅ Goal decreamented");
+                
+                // if success remove from pending operations
+                await removePendingOperation(ops[op].id);
+            }
+            catch(error) {
+                console.error("Error processing pending operation:", error);
+                // Increment retry count
+                ops[op].retryCount += 1;
+                // If retry count exceeds limit (e.g., 3), mark as FAILED
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
+                    // Remove from pending operations
+                    await removePendingOperation(ops[op].id);
+                } else {
+                    // Update the retry count in pending operations
+                    await addPendingOperation(ops[op]);
+                }
+            }
+        }
     }
 }
 
 // reset count after processing all ops
 increamentGoalCount = 0;
+decreamentGoalCount = 0;
 
 export default pendingOps;

@@ -164,6 +164,10 @@ func (h *goalHandler) IncreamentGoalProgress(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success Increament Goal Progress", "success": "true"})
 }
 
+type decreamentGoalBody struct {
+	Count string `json:"count"`
+}
+
 func (h *goalHandler) DecreamentGoalProgress(w http.ResponseWriter, r *http.Request) {
 	goalId := r.PathValue("goalId")
 
@@ -172,7 +176,20 @@ func (h *goalHandler) DecreamentGoalProgress(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	isUpdated, err := h.service.DecreamentGoalProgress(context.Background(), goalId)
+	var reqBody decreamentGoalBody
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	// convert count to int64 if needed in future
+	count, err := strconv.ParseInt(reqBody.Count, 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Count Parse Error in Handler", "success": "false"})
+		return
+	}
+
+	isUpdated, err := h.service.DecreamentGoalProgress(context.Background(), goalId, count)
 
 	if err != nil || !isUpdated {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})

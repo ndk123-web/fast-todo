@@ -17,7 +17,7 @@ type GoalRepository interface {
 	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
 	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
 	IncreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
-	DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error)
+	DecreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
 }
 
 type goalRepository struct {
@@ -178,7 +178,7 @@ func (r *goalRepository) IncreamentGoalProgress(ctx context.Context, goalId stri
 	return true, nil
 }
 
-func (r *goalRepository) DecreamentGoalProgress(ctx context.Context, goalId string) (bool, error) {
+func (r *goalRepository) DecreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error) {
 	if goalId == "" {
 		return false, errors.New("Goal Id is Empty in Repository")
 	}
@@ -190,7 +190,7 @@ func (r *goalRepository) DecreamentGoalProgress(ctx context.Context, goalId stri
 	}
 
 	filter := bson.M{"_id": oid}
-	update := bson.M{"$inc": bson.M{"currentTarget": -1}}
+	update := bson.M{"$inc": bson.M{"currentTarget": -count}}
 
 	updatedRes, err := r.goalCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
