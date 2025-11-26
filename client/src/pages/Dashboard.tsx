@@ -475,7 +475,7 @@ const Dashboard = () => {
   
   // States for editing goals
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
-  const [editGoalData, setEditGoalData] = useState({ title: '', target: '', category: '' });
+  const [editGoalData, setEditGoalData] = useState({ title: '', target: '', category: '', id: '' });
   
   // Layout view state - grid or list
   const [viewLayout, setViewLayout] = useState<'grid' | 'list'>('grid');
@@ -620,7 +620,8 @@ const Dashboard = () => {
     setEditGoalData({
       title: goal.title,
       target: goal.targetDays?.toString?.() || goal.target?.toString?.() || '',
-      category: goal.category
+      category: goal.category,
+      id: goal.id
     });
 
     // after that add for background processs after for 2 seconds setTimeout(() => {
@@ -628,7 +629,7 @@ const Dashboard = () => {
   };
 
   // Save edited goal with updated values
-  const saveEditGoal = () => {
+  const saveEditGoal = async () => {
     if (editingGoal && editGoalData.title.trim() && editGoalData.target && editGoalData.category.trim()) {
       const nextTarget = parseInt(editGoalData.target, 10);
       const safeTarget = isNaN(nextTarget) || nextTarget <= 0 ? 1 : nextTarget;
@@ -644,15 +645,63 @@ const Dashboard = () => {
             }
           : goal
       ));
+
+      // Edit Current Workspace Store Goals 
+      const currentWS = useWorkspaceStore.getState().currentWorkspace;
+      if (currentWS) {
+        const updatedGoals = currentWS.goals.map((goal: any) => 
+          goal.id === editingGoal 
+            ? { 
+                ...goal,
+                title: editGoalData.title,
+                targetDays: safeTarget,
+                target: safeTarget.toString(),
+                category: editGoalData.category,
+                currentTarget: Math.min(goal.currentTarget ?? 0, safeTarget)
+              }
+            : goal
+        );
+
+        // Update current workspace with modified goals
+        const updatedWorkspace = {
+          ...currentWS,
+          goals: updatedGoals
+        };
+        useWorkspaceStore.getState().setCurrentWorkspace(updatedWorkspace);
+        
+        // Update the full workspaces array with the modified workspace
+        const allWorkspaces = useWorkspaceStore.getState().workspaces.map(ws => 
+          ws.id === currentWS.id ? updatedWorkspace : ws
+        );
+        useWorkspaceStore.getState().setWorkspace(allWorkspaces);
+      }
+
+        // Debug log
+        console.log("Id of editing goal:", editingGoal);
+
+        await addPendingOperation({
+          id: `edit_goal_${Date.now()}`,
+          type: "EDIT_GOAL",
+          status: "PENDING",
+          payload: {
+            goalId: editingGoal,
+            updatedGoalName: editGoalData.title,
+            updatedCategory: editGoalData.category,
+            updatedTargetDays: String(safeTarget),
+          },
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+
       setEditingGoal(null);
-      setEditGoalData({ title: '', target: '', category: '' });
+      setEditGoalData({ title: '', target: '', category: '', id: '' });
     }
   };
 
   // Cancel goal editing and reset states
   const cancelEditGoal = () => {
     setEditingGoal(null);
-    setEditGoalData({ title: '', target: '', category: '' });
+    setEditGoalData({ title: '', target: '', category: '', id: '' });
   };
 
   // Increase goal progress by 1 (max = target)

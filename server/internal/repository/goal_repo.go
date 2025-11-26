@@ -14,7 +14,7 @@ import (
 type GoalRepository interface {
 	GetUserGoals(ctx context.Context, userId string, workspaceId string) ([]model.Goals, error)
 	CreateUserGoal(ctx context.Context, userId string, workspaceId string, goalName string, targetDays int64, category string) (model.Goals, error)
-	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error)
+	UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int64, updatedCategory string) (bool, error)
 	DeleteUserGoal(ctx context.Context, goalId string) (bool, error)
 	IncreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
 	DecreamentGoalProgress(ctx context.Context, goalId string, count int64) (bool, error)
@@ -99,7 +99,7 @@ func (r *goalRepository) CreateUserGoal(ctx context.Context, userId string, work
 	return insert, nil
 }
 
-func (r *goalRepository) UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int, updatedCategory string) (bool, error) {
+func (r *goalRepository) UpdateUserGoal(ctx context.Context, goalId string, updatedGoalName string, updatedTargetDays int64, updatedCategory string) (bool, error) {
 	if goalId == "" {
 		return false, errors.New("Goal ID is Empty in Repo")
 	}

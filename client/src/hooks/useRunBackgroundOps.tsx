@@ -10,6 +10,7 @@ import deleteTaskApi from "../api/deleteTaskApi";
 import addGoalApi from "../api/addGoalApi";
 import increamentGoalApi from "../api/increamentGoalApi";
 import decreamentGoalApi from "../api/decreamentGoalApi";
+import editGoalApi from "../api/editGoalApi";
 
 let increamentGoalCount = 0;
 let decreamentGoalCount = 0;
@@ -466,6 +467,32 @@ const pendingOps = async () => {
                     // Remove from pending operations
                     await removePendingOperation(ops[op].id);
                 } else {
+                    // Update the retry count in pending operations
+                    await addPendingOperation(ops[op]);
+                }
+            }
+        }
+        else if (ops[op].type === "EDIT_GOAL" && ops[op].status === "PENDING") {
+            try {
+                const response: any = await editGoalApi(ops[op].payload);
+                console.log("Response from editGoalApi:", response);
+
+                if (response?.success !== "true") {
+                    throw new Error("Failed to edit goal on server");
+                }
+                console.log("✅ Goal edited");
+            }
+            catch(error) {
+                console.error("Error processing pending operation:", error);
+                // Increment retry count
+                ops[op].retryCount += 1;
+                // If retry count exceeds limit (e.g., 3), mark as FAILED
+                if (ops[op].retryCount >= 3) {
+                    console.error("Max retry count reached for operation:", ops[op].id);
+                    // Remove from pending operations
+                    await removePendingOperation(ops[op].id);
+                }
+                else {
                     // Update the retry count in pending operations
                     await addPendingOperation(ops[op]);
                 }

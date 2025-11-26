@@ -75,31 +75,41 @@ func (h *goalHandler) CreateUserGoal(w http.ResponseWriter, r *http.Request) {
 
 type updateGoalBody struct {
 	UpdatedGoalName   string `json:"updatedGoalName"`
-	UpdatedTargetDays int    `json:"updatedTargetDays"`
+	UpdatedTargetDays string `json:"updatedTargetDays"`
 	UpdatedCategory   string `json:"updatedCategory"`
 }
 
 func (h *goalHandler) UpdateUserGoal(w http.ResponseWriter, r *http.Request) {
 	var reqBody updateGoalBody
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error(), "success": "false"})
 		return
 	}
 
-	if reqBody.UpdatedCategory == "" || reqBody.UpdatedGoalName == "" || reqBody.UpdatedTargetDays == 0 {
-		json.NewEncoder(w).Encode(map[string]any{"Error": "Category/TargetDays/GoalName is Empty"})
+	if reqBody.UpdatedCategory == "" || reqBody.UpdatedGoalName == "" || reqBody.UpdatedTargetDays == "" {
+		json.NewEncoder(w).Encode(map[string]any{"Error": "Category/TargetDays/GoalName is Empty", "success": "false"})
 		return
 	}
 
 	goalId := r.PathValue("goalId")
-
-	_, err := h.service.UpdateUserGoal(context.Background(), goalId, reqBody.UpdatedGoalName, reqBody.UpdatedTargetDays, reqBody.UpdatedCategory)
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error()})
+	if goalId == "" {
+		json.NewEncoder(w).Encode(map[string]any{"Error": "Goal Id is Empty in Handler", "success": "false"})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"response": "Success Update Goal"})
+	newTargetDays, err := strconv.ParseInt(reqBody.UpdatedTargetDays, 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]any{"Error": "Target Days Parse Error in Handler", "success": "false"})
+		return
+	}
+
+	ok, err := h.service.UpdateUserGoal(context.Background(), goalId, reqBody.UpdatedGoalName, newTargetDays, reqBody.UpdatedCategory)
+	if err != nil || !ok {
+		json.NewEncoder(w).Encode(map[string]any{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Update Goal", "success": "true"})
 }
 
 func (h *goalHandler) DeleteUserGoal(w http.ResponseWriter, r *http.Request) {
