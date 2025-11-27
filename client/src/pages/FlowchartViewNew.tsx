@@ -97,7 +97,7 @@ const FlowchartViewNew: React.FC = () => {
   
   // UI State
   const [showHelp, setShowHelp] = useState(false);
-  const [showMiniMap, setShowMiniMap] = useState(true);
+  const [showMiniMap, setShowMiniMap] = useState(false);
   
   // Sync todos from workspace and ensure reactivity
   const [todos, setTodos] = useState<Todo[]>(currentWorkspace?.todos || []);
