@@ -18,6 +18,7 @@ import 'reactflow/dist/style.css';
 import './FlowchartViewNew.css';
 import useWorkspaceStore, { type Todo, type FlowNode, type FlowEdge } from '../store/useWorkspaceStore';
 import useUserStore from '../store/useUserInfo';
+import updateWorkspaceLayoutApi from '../api/updateWorkspaceLayoutApi';
 // import { addPendingOperation } from '../store/indexDB/pendingOps/usePendingOps';
 // import useRunBackgroundOps from '../hooks/useRunBackgroundOps';
 import pendingOps from '../hooks/useRunBackgroundOps';
@@ -139,27 +140,13 @@ const FlowchartViewNew: React.FC = () => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const edgeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const debouncedSaveNodes = useCallback((workspaceId: string, flowNodes: FlowNode[]) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      updateNodes(workspaceId, flowNodes);
-      // console.log('💾 Nodes saved (debounced):', workspaceId, 'Count:', flowNodes.length);
-    }, 500); // Increased delay to reduce saves
-  }, [updateNodes]);
+  // Refs to store current state to avoid stale closures
+  const currentNodesRef = useRef<any[]>([]);
+  const currentEdgesRef = useRef<any[]>([]);
   
-  const debouncedSaveEdges = useCallback((workspaceId: string, flowEdges: FlowEdge[]) => {
-    if (edgeTimeoutRef.current) {
-      clearTimeout(edgeTimeoutRef.current);
-    }
-    
-    edgeTimeoutRef.current = setTimeout(() => {
-      updateEdges(workspaceId, flowEdges);
-      // console.log('💾 Edges saved (debounced):', workspaceId, 'Count:', flowEdges.length);
-    }, 200); // Increased delay
-  }, [updateEdges]);
+  // We'll define these after nodes/edges are available
+  const debouncedSaveNodes = useRef<((workspaceId: string, flowNodes: FlowNode[]) => void) | null>(null);
+  const debouncedSaveEdges = useRef<((workspaceId: string, flowEdges: FlowEdge[]) => void) | null>(null);
 
   // Toggle todo completion with proper state updates
   const toggleTodoCompleted = useCallback(async (todoId: string) => {
@@ -173,7 +160,7 @@ const FlowchartViewNew: React.FC = () => {
     );
 
     // // Update workspace store - both currentWorkspace and workspaces array
-    // const updatedTodos = currentWorkspace.todos.map(todo =>
+    // const updatedTodos = currentWork``space.todos.map(todo =>
     //   todo.id === todoId ? { ...todo, completed: !todo.completed } : todo
     // );
 
@@ -223,6 +210,14 @@ const FlowchartViewNew: React.FC = () => {
     const storedEdges = currentWorkspace.initialEdges || [];
     const currentTodos = currentWorkspace.todos || [];
     
+    console.log('🔍 InitializeFlow Debug:');
+    console.log('- Workspace ID:', currentWorkspace.id);
+    console.log('- Stored nodes count:', storedNodes.length);
+    console.log('- Stored edges count:', storedEdges.length);
+    console.log('- Current todos count:', currentTodos.length);
+    console.log('- Stored nodes:', storedNodes);
+    console.log('- Stored edges:', storedEdges);
+    
     // Create nodes from current todos, preserving positions from stored nodes
     const newNodes = currentTodos.map((todo, index) => {
       const existingNode = storedNodes.find(n => n.id === todo.id);
@@ -245,6 +240,9 @@ const FlowchartViewNew: React.FC = () => {
       newNodes.some(node => node.id === edge.target)
     );
     
+    console.log('- New nodes created:', newNodes.length);
+    console.log('- Valid edges filtered:', validEdges.length);
+    
     return {
       nodes: newNodes,
       edges: validEdges,
@@ -258,6 +256,82 @@ const FlowchartViewNew: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // Update refs whenever nodes/edges change
+  useEffect(() => {
+    currentNodesRef.current = nodes;
+  }, [nodes]);
+  
+  useEffect(() => {
+    currentEdgesRef.current = edges;
+  }, [edges]);
+
+  // Initialize debounced functions after nodes/edges are available
+  debouncedSaveNodes.current = useCallback((workspaceId: string, flowNodes: FlowNode[]) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      // Update IndexedDB first
+      updateNodes(workspaceId, flowNodes);
+      console.log('💾 Nodes saved to IndexedDB:', workspaceId, 'Count:', flowNodes.length);
+      
+      // Sync with backend - Use ref to get fresh edges
+      try {
+        const currentEdges = currentEdgesRef.current.map((edge: any) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          animated: edge.animated || false,
+          style: edge.style,
+          type: edge.type,
+        }));
+        
+        await updateWorkspaceLayoutApi({
+          workspaceId,
+          initialNodes: flowNodes,
+          initialEdges: currentEdges
+        });
+        console.log('🌐 Nodes+Edges layout synced to backend successfully');
+      } catch (error) {
+        console.error('❌ Failed to sync layout to backend:', error);
+      }
+    }, 500);
+  }, [updateNodes]);
+  
+  debouncedSaveEdges.current = useCallback((workspaceId: string, flowEdges: FlowEdge[]) => {
+    if (edgeTimeoutRef.current) {
+      clearTimeout(edgeTimeoutRef.current);
+    }
+    
+    edgeTimeoutRef.current = setTimeout(async () => {
+      // Update IndexedDB first
+      updateEdges(workspaceId, flowEdges);
+      console.log('🔗 Edges saved to IndexedDB:', workspaceId, 'Count:', flowEdges.length);
+      
+      // Sync with backend - Use ref to get fresh nodes
+      try {
+        const currentNodes = currentNodesRef.current.map((node: any) => ({
+          id: node.id,
+          type: node.type || 'todoNode',
+          position: node.position,
+          data: {
+            todo: todos.find(t => t.id === node.id)
+          },
+        }));
+        
+        await updateWorkspaceLayoutApi({
+          workspaceId,
+          initialNodes: currentNodes,
+          initialEdges: flowEdges
+        });
+        console.log('🌐 Edges+Nodes layout synced to backend successfully');
+      } catch (error) {
+        console.error('❌ Failed to sync layout to backend:', error);
+      }
+    }, 200);
+  }, [updateEdges, todos]);
+
   // Only re-initialize when workspace ID actually changes (not on every render)
   const prevWorkspaceIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -267,6 +341,8 @@ const FlowchartViewNew: React.FC = () => {
       setNodes(newNodes);
       setEdges(newEdges);
       console.log('🔄 Re-initialized flow for workspace:', currentWorkspace.id);
+      console.log('📊 Initialized with nodes:', newNodes.length, 'edges:', newEdges.length);
+      console.log('🔗 Edges:', newEdges);
     }
   }, [currentWorkspace?.id]);
 
@@ -284,8 +360,8 @@ const FlowchartViewNew: React.FC = () => {
 
   // Optimized auto-save nodes with debouncing
   useEffect(() => {
-    if (currentWorkspace && nodes.length > 0) {
-      debouncedSaveNodes(currentWorkspace.id, memoizedFlowNodes);
+    if (currentWorkspace && nodes.length > 0 && debouncedSaveNodes.current) {
+      debouncedSaveNodes.current(currentWorkspace.id, memoizedFlowNodes);
     }
     
     // Cleanup timeout on unmount or workspace change
@@ -298,7 +374,7 @@ const FlowchartViewNew: React.FC = () => {
 
   // Optimized auto-save edges with debouncing
   useEffect(() => {
-    if (currentWorkspace && edges.length >= 0) { // Allow empty edges array
+    if (currentWorkspace && edges.length >= 0 && debouncedSaveEdges.current) { // Allow empty edges array
       const flowEdges: FlowEdge[] = edges.map(edge => ({
         id: edge.id,
         source: edge.source,
@@ -308,7 +384,7 @@ const FlowchartViewNew: React.FC = () => {
         type: edge.type,
       }));
       
-      debouncedSaveEdges(currentWorkspace.id, flowEdges);
+      debouncedSaveEdges.current(currentWorkspace.id, flowEdges);
     }
     
     // Cleanup timeout on unmount or workspace change

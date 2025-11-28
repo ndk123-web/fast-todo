@@ -37,6 +37,62 @@ const Dashboard = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [workspacesFetched, setWorkspacesFetched] = useState(false);
   
+  // Function to normalize malformed MongoDB Key-Value data
+  const normalizeMongoData = (data: any) => {
+    if (!data) return [];
+    if (Array.isArray(data) && data.length > 0) {
+      // Check if it's malformed MongoDB format
+      if (data[0] && typeof data[0] === 'object' && 'Key' in data[0] && 'Value' in data[0]) {
+        // This is malformed MongoDB data, convert it
+        return data.map((item: any) => {
+          if (Array.isArray(item)) {
+            // Handle array of Key-Value pairs
+            const obj: any = {};
+            item.forEach((kv: any) => {
+              if (kv.Key && kv.Value !== undefined) {
+                if (kv.Key === 'position' && Array.isArray(kv.Value)) {
+                  // Special handling for position
+                  const posObj: any = {};
+                  kv.Value.forEach((pos: any) => {
+                    if (pos.Key) posObj[pos.Key] = pos.Value;
+                  });
+                  obj[kv.Key] = posObj;
+                } else if (kv.Key === 'data' && Array.isArray(kv.Value)) {
+                  // Special handling for data
+                  const dataObj: any = {};
+                  kv.Value.forEach((dataItem: any) => {
+                    if (dataItem.Key === 'todo' && Array.isArray(dataItem.Value)) {
+                      const todoObj: any = {};
+                      dataItem.Value.forEach((todoField: any) => {
+                        if (todoField.Key) todoObj[todoField.Key] = todoField.Value;
+                      });
+                      dataObj[dataItem.Key] = todoObj;
+                    } else if (dataItem.Key) {
+                      dataObj[dataItem.Key] = dataItem.Value;
+                    }
+                  });
+                  obj[kv.Key] = dataObj;
+                } else if (kv.Key === 'style' && Array.isArray(kv.Value)) {
+                  // Special handling for style
+                  const styleObj: any = {};
+                  kv.Value.forEach((style: any) => {
+                    if (style.Key) styleObj[style.Key] = style.Value;
+                  });
+                  obj[kv.Key] = styleObj;
+                } else {
+                  obj[kv.Key] = kv.Value;
+                }
+              }
+            });
+            return obj;
+          }
+          return item;
+        });
+      }
+    }
+    return data;
+  };
+  
   // Fetch workspaces from server
   const fetchWorkspacesFromServer = async () => {
     try {
@@ -88,8 +144,16 @@ const Dashboard = () => {
               createdAt: g.createdAt ? new Date(g.createdAt) : new Date(),
             } as Goal;
         }),
-        initialNodes: ws.initialNodes || [],
-        initialEdges: ws.initialEdges || []
+        initialNodes: (() => {
+          const normalized = normalizeMongoData(ws.initialNodes);
+          console.log(`🔄 Normalized nodes for workspace ${ws._id}:`, normalized);
+          return normalized || [];
+        })(),
+        initialEdges: (() => {
+          const normalized = normalizeMongoData(ws.initialEdges);
+          console.log(`🔗 Normalized edges for workspace ${ws._id}:`, normalized);
+          return normalized || [];
+        })()
       }));
 
       return formattedWorkspaces;

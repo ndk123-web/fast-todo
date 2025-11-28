@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ndk123-web/fast-todo/internal/middleware"
-	"github.com/ndk123-web/fast-todo/internal/repository"
-	"github.com/ndk123-web/fast-todo/internal/service"
 	"net/http"
+
+	"github.com/ndk123-web/fast-todo/internal/middleware"
+	"github.com/ndk123-web/fast-todo/internal/service"
 )
 
 type WorkspaceHandler interface {
@@ -15,6 +15,7 @@ type WorkspaceHandler interface {
 	CreateWorkspace(w http.ResponseWriter, r *http.Request)
 	UpdateWorkspace(w http.ResponseWriter, r *http.Request)
 	DeleteWorkspace(w http.ResponseWriter, r *http.Request)
+	UpdateWorkspaceLayout(w http.ResponseWriter, r *http.Request)
 }
 
 type workspaceHandler struct {
@@ -138,8 +139,54 @@ func (h *workspaceHandler) DeleteWorkspace(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"response": "Success"})
 }
 
+// UpdateWorkspaceLayout updates the nodes and edges for a workspace
+func (h *workspaceHandler) UpdateWorkspaceLayout(w http.ResponseWriter, r *http.Request) {
+	// Get workspaceId from URL path
+	workspaceId := r.PathValue("workspaceId")
+	if workspaceId == "" {
+		http.Error(w, "Workspace ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var reqBody struct {
+		InitialNodes []map[string]interface{} `json:"initialNodes"`
+		InitialEdges []map[string]interface{} `json:"initialEdges"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Call service to update layout
+	isUpdated, err := h.service.UpdateWorkspaceLayout(
+		context.Background(),
+		workspaceId,
+		reqBody.InitialNodes,
+		reqBody.InitialEdges,
+	)
+
+	if err != nil {
+		http.Error(w, "Failed to update layout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !isUpdated {
+		http.Error(w, "Workspace not found or not updated", http.StatusNotFound)
+		return
+	}
+
+	// Success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Layout updated successfully",
+	})
+}
+
 // New Workspace Handler
-func NewWorkspaceHandler(service repository.WorkSpaceRepository) WorkspaceHandler {
+func NewWorkspaceHandler(service service.WorkspaceService) WorkspaceHandler {
 	return &workspaceHandler{
 		service: service,
 	}

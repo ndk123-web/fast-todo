@@ -5,11 +5,12 @@ import (
 	"errors"
 
 	"fmt"
+	"time"
+
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 // WorkSpaceRepository interface
@@ -18,6 +19,7 @@ type WorkSpaceRepository interface {
 	CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error)
 	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
 	DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error
+	UpdateWorkspaceLayout(ctx context.Context, workspaceId string, nodes, edges []map[string]interface{}) (bool, error)
 }
 
 // workspaceRepository struct
@@ -221,6 +223,33 @@ func (r *workspaceRepository) DeleteWorkspace(ctx context.Context, userId string
 	}
 
 	return nil
+}
+
+// UpdateWorkspaceLayout updates the initialNodes and initialEdges for a workspace
+func (r *workspaceRepository) UpdateWorkspaceLayout(ctx context.Context, workspaceId string, nodes, edges []map[string]interface{}) (bool, error) {
+	oid, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil {
+		return false, err
+	}
+
+	// Create filter and update
+	filter := bson.M{"_id": oid}
+	update := bson.M{
+		"$set": bson.M{
+			"initialNodes": nodes,
+			"initialEdges": edges,
+			"updatedAt":    time.Now(),
+		},
+	}
+
+	// Perform update
+	result, err := r.workspaceCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return false, err
+	}
+
+	// Return true if document was modified
+	return result.ModifiedCount > 0, nil
 }
 
 func NewWorkspaceRepository(workspaceCollection *mongo.Collection) WorkSpaceRepository {

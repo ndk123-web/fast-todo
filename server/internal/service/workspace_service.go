@@ -11,9 +11,10 @@ import (
 // WorkspaceService interface
 type WorkspaceService interface {
 	GetAllUserWorkspace(ctx context.Context, userId string) ([]model.Workspace, error)
-	CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string,error)
+	CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error)
 	UpdatedWorkspace(ctx context.Context, userId string, workspaceName string, updatedWorkspace string) error
 	DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error
+	UpdateWorkspaceLayout(ctx context.Context, workspaceId string, nodes, edges []map[string]interface{}) (bool, error)
 }
 
 // workspaceService struct
@@ -30,9 +31,9 @@ func (s *workspaceService) GetAllUserWorkspace(ctx context.Context, userId strin
 	return s.repo.GetAllUserWorkspace(ctx, userId)
 }
 
-func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string,error) {
+func (s *workspaceService) CreateWorkspace(ctx context.Context, userId string, workspaceName string) (string, error) {
 	if userId == "" || workspaceName == "" {
-		return "",errors.New("UserEmail or workspaceName is Empty")
+		return "", errors.New("UserEmail or workspaceName is Empty")
 	}
 
 	// call the repo create method
@@ -52,7 +53,6 @@ func (s *workspaceService) UpdatedWorkspace(ctx context.Context, userId string, 
 	return nil
 }
 
-
 func (s *workspaceService) DeleteWorkspace(ctx context.Context, userId string, workspaceName string) error {
 	if userId == "" || workspaceName == "" {
 		return errors.New("UserId / workspace name empty in Service")
@@ -64,6 +64,15 @@ func (s *workspaceService) DeleteWorkspace(ctx context.Context, userId string, w
 	}
 
 	return nil
+}
+
+func (s *workspaceService) UpdateWorkspaceLayout(ctx context.Context, workspaceId string, nodes, edges []map[string]interface{}) (bool, error) {
+	if workspaceId == "" {
+		return false, errors.New("workspaceId is empty in Service")
+	}
+
+	// call the repo update layout method
+	return s.repo.UpdateWorkspaceLayout(ctx, workspaceId, nodes, edges)
 }
 
 func NewWorkSpaceService(repo repository.WorkSpaceRepository) WorkspaceService {

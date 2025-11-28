@@ -59,6 +59,7 @@ func (s *Server) Start(port string) error {
 	mux.Handle("POST /api/v1/workspaces/create-workspace", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.CreateWorkspace)))
 	mux.Handle("PUT /api/v1/workspaces/update-workspace", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.UpdateWorkspace)))
 	mux.Handle("DELETE /api/v1/workspaces/delete-workspace", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.DeleteWorkspace)))
+	mux.Handle("PUT /api/v1/workspaces/{workspaceId}/layout", middleware.AuthMiddleware(http.HandlerFunc(s.workspaceHandler.UpdateWorkspaceLayout)))
 
 	// it means cors -> log -> actual handler(mux)
 	// global logging and cors middleware
