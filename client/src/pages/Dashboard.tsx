@@ -561,6 +561,9 @@ const Dashboard = () => {
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   
+  // Workspace transition animation state
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
   // Generate year options from 2025 to current year
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: currentYear - 2024 }, (_, i) => 2025 + i);
@@ -917,7 +920,12 @@ const Dashboard = () => {
   };
 
   const handleWorkspaceClick = (workspace: typeof workspaces[0]) => {
-    setCurrentWorkspace(workspace);
+    if (currentWorkspace?.id === workspace.id) return; // No transition if same workspace
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentWorkspace(workspace);
+      setIsTransitioning(false);
+    }, 150);
   };
 
   const handleMenuClick = (workspaceId: string, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -957,7 +965,7 @@ const Dashboard = () => {
       }
       await clearPendingOperations();
       console.log('✅ Pending operations cleared');
-    }, 50);
+    }, 1000);
   };
 
   // Calculate comprehensive statistics for stat cards
@@ -1299,7 +1307,7 @@ const Dashboard = () => {
          
         </header>
         
-        <div className="dashboard-content">
+        <div className={`dashboard-content ${isTransitioning ? 'workspace-transitioning' : ''}`}>
           {/* Top Stats Cards */}
           <div className="stats-grid">
             <div className="stat-card-pro">
@@ -1434,7 +1442,7 @@ const Dashboard = () => {
 
                     {/* Wave-Style Chart */}
                     <div className="wave-chart-container">
-                      <svg className="wave-chart-svg" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet">
+                      <svg className="wave-chart-svg" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet" style={{ pointerEvents: 'auto' }}>
                         <defs>
                           <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stopColor="#667eea" stopOpacity="0.35"/>
@@ -1470,7 +1478,8 @@ const Dashboard = () => {
                         {/* Y-axis labels */}
                         <g className="wave-y-axis">
                           {[...Array(5)].map((_, i) => {
-                            const value = Math.round((maxCompleted / 4) * (4 - i));
+                            const scaleMax = Math.max(maxCompleted, 10); // Minimum scale of 10
+                            const value = Math.round((scaleMax / 4) * (4 - i));
                             return (
                               <text 
                                 key={`y-${i}`}
@@ -1493,9 +1502,10 @@ const Dashboard = () => {
                           <>
                             {/* Generate smooth curve path */}
                             {(() => {
+                              const scaleMax = Math.max(maxCompleted, 10); // Minimum scale of 10
                               const points = analyticsData.map((data, index) => {
                                 const x = 80 + (index * (680 / 11));
-                                const y = 196 - ((data.completed / (maxCompleted || 1)) * 140);
+                                const y = 196 - ((data.completed / scaleMax) * 140);
                                 return { x, y, data };
                               });
                               
@@ -1542,10 +1552,11 @@ const Dashboard = () => {
                                       <circle
                                         cx={point.x}
                                         cy={point.y}
-                                        r="5"
+                                        r="8"
                                         fill="transparent"
                                         stroke="transparent"
                                         className="wave-point-hit"
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                                         onMouseEnter={() => setHoveredMonth(index)}
                                         onMouseLeave={() => setHoveredMonth(null)}
                                       />
@@ -1585,32 +1596,32 @@ const Dashboard = () => {
                                       {hoveredMonth === index && (
                                         <g className="wave-tooltip">
                                           <rect
-                                            x={Math.max(50, Math.min(point.x - 55, 720))}
-                                            y={point.y - 75}
-                                            width="110"
-                                            height="60"
-                                            rx="10"
-                                            fill="rgba(0, 0, 0, 0.95)"
-                                            stroke="rgba(102, 126, 234, 0.6)"
-                                            strokeWidth="2"
+                                            x={Math.max(50, Math.min(point.x - 60, 715))}
+                                            y={point.y - 85}
+                                            width="120"
+                                            height="75"
+                                            rx="12"
+                                            fill="rgba(0, 0, 0, 0.98)"
+                                            stroke="rgba(102, 126, 234, 0.7)"
+                                            strokeWidth="2.5"
                                             filter="url(#waveShadow)"
                                           />
                                           <text
-                                            x={Math.max(55, Math.min(point.x, 775))}
-                                            y={point.y - 54}
-                                            fill="rgba(255, 255, 255, 0.7)"
-                                            fontSize="12"
-                                            fontWeight="600"
+                                            x={Math.max(60, Math.min(point.x, 770))}
+                                            y={point.y - 65}
+                                            fill="rgba(255, 255, 255, 0.8)"
+                                            fontSize="13"
+                                            fontWeight="700"
                                             textAnchor="middle"
                                             dominantBaseline="middle"
                                           >
                                             {point.data.label}
                                           </text>
                                           <text
-                                            x={Math.max(55, Math.min(point.x, 775))}
-                                            y={point.y - 36}
+                                            x={Math.max(60, Math.min(point.x, 770))}
+                                            y={point.y - 45}
                                             fill="#667eea"
-                                            fontSize="18"
+                                            fontSize="20"
                                             fontWeight="900"
                                             textAnchor="middle"
                                             dominantBaseline="middle"
@@ -1618,15 +1629,23 @@ const Dashboard = () => {
                                             {point.data.completed}
                                           </text>
                                           <text
-                                            x={Math.max(55, Math.min(point.x, 775))}
-                                            y={point.y - 20}
-                                            fill="rgba(255, 255, 255, 0.55)"
-                                            fontSize="11"
+                                            x={Math.max(60, Math.min(point.x, 770))}
+                                            y={point.y - 25}
+                                            fill="rgba(255, 255, 255, 0.6)"
+                                            fontSize="12"
                                             textAnchor="middle"
                                             dominantBaseline="middle"
                                           >
                                             tasks completed
                                           </text>
+                                          <line
+                                            x1={Math.max(60, Math.min(point.x - 45, 725))}
+                                            y1={point.y - 15}
+                                            x2={Math.max(60, Math.min(point.x + 45, 800))}
+                                            y2={point.y - 15}
+                                            stroke="rgba(102, 126, 234, 0.3)"
+                                            strokeWidth="1"
+                                          />
                                         </g>
                                       )}
                                     </g>

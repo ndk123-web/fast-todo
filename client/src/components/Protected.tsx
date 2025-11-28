@@ -25,7 +25,7 @@ const Protected: React.FC<ProtectedProps> = ({ children }) => {
                 
                 return () => clearTimeout(redirectTimer)
             }
-        }, 500)
+        }, 2000)
 
         return () => clearTimeout(timer)
     }, [isAuthenticated, navigate])
