@@ -17,6 +17,7 @@ type TodoService interface {
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
 	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
 	ToggleTodo(ctx context.Context, todoId string, toggle string, userId string) (bool, error)
+	AnalyticsOfTodos(ctx context.Context, year string, userId string, workspaceId string) (any, error)
 }
 
 // todoService implements TodoService with a repository layer dependency
@@ -49,7 +50,7 @@ func (s *todoService) CreateTodo(ctx context.Context, todo model.Todo, workspace
 
 // UpdateTodo modifies an existing todo's task through the repository
 func (s *todoService) UpdateTodo(ctx context.Context, todoId string, updatedTask string, priority string) (model.Todo, error) {
-	return s.repo.UpdateTodo(ctx, todoId, updatedTask,priority)
+	return s.repo.UpdateTodo(ctx, todoId, updatedTask, priority)
 }
 
 // DeleteTodo removes a todo item by ID through the repository
@@ -71,4 +72,12 @@ func (s *todoService) GetSpecificTodo(ctx context.Context, workspaceId string, u
 	}
 
 	return todos, nil
+}
+
+func (s *todoService) AnalyticsOfTodos(ctx context.Context, year string, userId string, workspaceId string) (any, error) {
+	if year == "" || userId == "" {
+		return nil, errors.New("Year / UserId is empty in service")
+	}
+
+	return s.repo.AnalyticsOfTodos(ctx, year, userId, workspaceId)
 }

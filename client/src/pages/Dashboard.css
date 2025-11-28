@@ -239,6 +239,9 @@
   transition: margin-left 0.3s ease;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dashboard-sidebar.collapsed ~ .dashboard-main {
@@ -497,40 +500,308 @@
   padding: 24px;
 }
 
-.analytics-header h3 {
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.analytics-title {
+  flex: 1;
+}
+
+.analytics-title h3 {
   font-size: 18px;
   font-weight: 600;
   color: white;
   margin: 0 0 4px 0;
 }
 
-.analytics-header p {
+.analytics-title p {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   margin: 0;
+}
+
+.analytics-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.year-selector {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.year-selector:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.year-selector:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(102, 126, 234, 0.5);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.year-selector option {
+  background: #1a1a2e;
+  color: white;
 }
 
 .analytics-chart {
   margin-top: 32px;
   height: 200px;
   position: relative;
+  overflow: hidden;
 }
 
-/* Chart Tooltip */
-.chart-tooltip {
-  position: absolute;
-  top: -50px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  border-radius: 8px;
-  padding: 12px 16px;
-  z-index: 10;
-  pointer-events: none;
-  animation: tooltipFadeIn 0.2s ease-out;
-  white-space: nowrap;
+/* NPM-Style Analytics Chart */
+.npm-analytics-chart {
+  margin-top: 32px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* NPM Chart Header */
+.npm-chart-header {
+  margin-bottom: 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.npm-stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.npm-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.npm-stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.npm-stat-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.npm-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 20px;
+  margin: 0 8px;
+}
+
+/* NPM Chart Container */
+.npm-chart-container {
+  position: relative;
+  height: 240px;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  padding: 20px;
+}
+
+.npm-chart-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Chart Elements */
+.area-fill {
+  transition: opacity 0.3s ease;
+}
+
+.area-line {
+  filter: drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3));
+  transition: all 0.3s ease;
+}
+
+.data-point {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 2px 6px rgba(102, 126, 234, 0.4));
+}
+
+.data-point:hover,
+.data-point.hovered {
+  r: 6;
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.6));
+  animation: pulsePoint 0.3s ease;
+}
+
+.npm-tooltip {
+  animation: tooltipSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Chart Empty State */
+.npm-chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.npm-chart-empty .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.npm-chart-empty p {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+}
+
+.npm-chart-empty span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Loading State */
+.analytics-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(102, 126, 234, 0.2);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+/* Animations */
+@keyframes pulsePoint {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tooltipSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Hover Effects */
+.npm-analytics-chart:hover .area-fill {
+  opacity: 0.8;
+}
+
+.npm-analytics-chart:hover .area-line {
+  filter: drop-shadow(0 3px 12px rgba(102, 126, 234, 0.5));
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .npm-analytics-chart {
+    padding: 20px;
+    margin-top: 24px;
+  }
+  
+  .npm-chart-header {
+    margin-bottom: 24px;
+  }
+  
+  .npm-stats {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .npm-stat {
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+  }
+  
+  .npm-stat-number {
+    font-size: 24px;
+    margin-bottom: 0;
+  }
+  
+  .npm-stat-label {
+    font-size: 12px;
+  }
+  
+  .npm-divider {
+    display: none;
+  }
+  
+  .npm-chart-container {
+    height: 200px;
+    padding: 16px;
+  }
+  
+  .npm-chart-empty {
+    height: 160px;
+  }
+  
+  .npm-chart-empty .empty-icon {
+    font-size: 40px;
+  }
 }
 
 @keyframes tooltipFadeIn {
@@ -565,11 +836,15 @@
   align-items: flex-end;
   justify-content: space-around;
   height: 100%;
-  gap: 12px;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 4px;
 }
 
 .chart-bar {
   flex: 1;
+  min-width: 24px;
+  max-width: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -587,14 +862,14 @@
   width: 100%;
   height: 100%;
   background: linear-gradient(180deg, rgba(102, 126, 234, 0.6) 0%, rgba(118, 75, 162, 0.6) 100%);
-  border-radius: 8px 8px 0 0;
+  border-radius: 6px 6px 0 0;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .chart-bar-fill::before {
@@ -603,12 +878,12 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
 }
 
 .chart-bar-value {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: white;
   opacity: 0;
@@ -626,10 +901,11 @@
 }
 
 .chart-bar-label {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
   transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
 .chart-bar:hover .chart-bar-label {
@@ -2256,6 +2532,104 @@
 
   .goal-form-row {
     grid-template-columns: 1fr;
+  }
+
+  /* Analytics responsive styles */
+  .analytics-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .analytics-controls {
+    justify-content: flex-end;
+  }
+
+  .year-selector {
+    min-width: 100px;
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+
+  .analytics-chart {
+    height: 180px;
+    margin-top: 24px;
+  }
+
+  .chart-bars {
+    gap: 6px;
+    padding: 0 2px;
+  }
+
+  .chart-bar {
+    min-width: 20px;
+    max-width: 28px;
+  }
+
+  .chart-bar-label {
+    font-size: 10px;
+    transform: rotate(45deg);
+    transform-origin: center;
+    margin-top: 8px;
+  }
+
+  .chart-bar-value {
+    font-size: 10px;
+    padding-top: 4px;
+  }
+
+  .chart-tooltip {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .chart-tooltip-title {
+    font-size: 11px;
+  }
+
+  .chart-tooltip-value {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .analytics-header {
+    text-align: center;
+  }
+
+  .analytics-title h3 {
+    font-size: 16px;
+  }
+
+  .analytics-title p {
+    font-size: 12px;
+  }
+
+  .analytics-chart {
+    height: 160px;
+  }
+
+  .chart-bars {
+    gap: 4px;
+    padding: 0 1px;
+  }
+
+  .chart-bar {
+    min-width: 18px;
+    max-width: 24px;
+  }
+
+  .chart-bar-label {
+    font-size: 9px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: none;
+    margin-top: 4px;
+  }
+
+  .year-selector {
+    width: 100%;
+    max-width: 120px;
   }
 }
 

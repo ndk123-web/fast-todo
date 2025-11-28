@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,6 +20,7 @@ type TodoRepository interface {
 	DeleteTodo(ctx context.Context, todoId string) (bool, error)
 	GetSpecificTodo(ctx context.Context, workspaceId string, userId string) ([]model.Todo, error)
 	ToggleTodo(ctx context.Context, todoId string, toggle string, userId string) (bool, error)
+	AnalyticsOfTodos(ctx context.Context, year string, userId string, workspaceId string) (any, error)
 }
 
 // todoRepo implements TodoRepository with MongoDB as the data store
@@ -115,6 +118,8 @@ func (r *todoRepo) CreateTodo(ctx context.Context, todo model.Todo, workspaceId 
 
 	todo.WorkspaceId = workspaceOid
 	todo.UserId = userOid
+	todo.CreatedAt = time.Now()
+	todo.UpdatedAt = time.Now()
 
 	insertedId, err := r.collection.InsertOne(ctx, todo)
 	if err != nil {
@@ -214,6 +219,92 @@ func (r *todoRepo) GetSpecificTodo(ctx context.Context, workspaceId string, user
 
 	// return todos and nil as no error
 	return todos, nil
+}
+
+func (r *todoRepo) AnalyticsOfTodos(ctx context.Context, year string, userId string, workspaceId string) (any, error) {
+	if year == "" || userId == "" {
+		return nil, errors.New("Year / UserId is Empty in Repo")
+	}
+
+	// convert userId into ObjectId
+	userOid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the year
+	yearInt := 0
+	fmt.Sscanf(year, "%d", &yearInt)
+	if yearInt < 2020 || yearInt > 2030 {
+		return nil, errors.New("invalid year range")
+	}
+
+	// Create start and end dates for the year
+	startDate := time.Date(yearInt, 1, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(yearInt+1, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// Filter by userId, workspaceId (if provided), and year range
+	filter := bson.M{
+		"userId": userOid,
+		"done":   true, // Only count completed todos
+		"createdAt": bson.M{
+			"$gte": startDate,
+			"$lt":  endDate,
+		},
+	}
+
+	// Add workspaceId filter if provided
+	if workspaceId != "" {
+		filter["workspaceId"] = workspaceId
+		fmt.Printf("🏢 Analytics: Filtering by workspace: %s\n", workspaceId)
+	}
+
+	fmt.Printf("🔍 Analytics filter: %+v\n", filter)
+	fmt.Printf("📅 Date range: %s to %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	// Count todos by month
+	monthlyCounts := make(map[int]int)
+	for i := 1; i <= 12; i++ {
+		monthlyCounts[i] = 0
+	}
+
+	totalFound := 0
+	for cursor.Next(ctx) {
+		var todo model.Todo
+		if err := cursor.Decode(&todo); err != nil {
+			continue
+		}
+		month := int(todo.CreatedAt.Month())
+		monthlyCounts[month]++
+		totalFound++
+		fmt.Printf("📋 Found completed todo: %s (Month: %d, Created: %s)\n", todo.Task, month, todo.CreatedAt.Format("2006-01-02"))
+	}
+
+	fmt.Printf("📊 Analytics Summary - Total found: %d completed todos for year %s\n", totalFound, year)
+	fmt.Printf("📈 Monthly breakdown: %+v\n", monthlyCounts)
+
+	// Format response as required by frontend
+	monthNames := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
+	monthLabels := []string{"January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December"}
+
+	result := make([]map[string]interface{}, 12)
+	for i := 0; i < 12; i++ {
+		result[i] = map[string]interface{}{
+			"month":     monthNames[i],
+			"completed": monthlyCounts[i+1],
+			"label":     monthLabels[i],
+		}
+	}
+
+	return result, nil
 }
 
 // NewTodoRepository creates and returns a new instance of TodoRepository

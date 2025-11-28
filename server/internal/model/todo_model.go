@@ -1,6 +1,10 @@
 package model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 // ID has type of primitive.ObjectID
 type Todo struct {
@@ -15,5 +19,7 @@ type Todo struct {
 
 	// why not omitempty
 	// because if false then it wont show in json / bson response
-	Done bool `bson:"done" json:"done"`
+	Done      bool      `bson:"done" json:"done"`
+	CreatedAt time.Time `bson:"createdAt,omitempty" json:"createdAt,omitempty"`
+	UpdatedAt time.Time `bson:"updatedAt,omitempty" json:"updatedAt,omitempty"`
 }

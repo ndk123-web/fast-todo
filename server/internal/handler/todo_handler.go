@@ -20,6 +20,7 @@ type TodoHandler interface {
 	DeleteTodo(w http.ResponseWriter, r *http.Request)
 	GetSpecificTodo(w http.ResponseWriter, r *http.Request)
 	ToogleTodo(w http.ResponseWriter, r *http.Request)
+	AnalyticsOfTodos(w http.ResponseWriter, r *http.Request)
 }
 
 // todoHandler implements TodoHandler with a service layer dependency
@@ -202,4 +203,39 @@ func (h *todoHandler) GetSpecificTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]any{"response": todo})
+}
+
+type analyticsRequest struct {
+	Year        string `json:"year"`
+	WorkspaceId string `json:"workspaceId"`
+}
+
+func (h *todoHandler) AnalyticsOfTodos(w http.ResponseWriter, r *http.Request) {
+	year := r.PathValue("year")
+	userId := r.PathValue("userId")
+
+	// Get request body for workspaceId
+	var reqBody analyticsRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		fmt.Printf("❌ Analytics: Error decoding request body: %v\n", err)
+		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": "Invalid request body"})
+		return
+	}
+
+	fmt.Printf("📊 Analytics Request - Year: %s, UserId: %s, WorkspaceId: %s\n", year, userId, reqBody.WorkspaceId)
+
+	if year == "" || userId == "" {
+		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": "Year / UserId is empty"})
+		return
+	}
+
+	analytics, err := h.service.AnalyticsOfTodos(context.Background(), year, userId, reqBody.WorkspaceId)
+	if err != nil {
+		fmt.Printf("❌ Analytics: Service error: %v\n", err)
+		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": err.Error()})
+		return
+	}
+
+	fmt.Printf("✅ Analytics: Returning data: %+v\n", analytics)
+	json.NewEncoder(w).Encode(map[string]any{"success": "true", "response": analytics})
 }

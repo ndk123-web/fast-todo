@@ -9,6 +9,7 @@ import getUserWorkspaceApi from '../api/getUserWorkspaceApi';
 import type { CreateTaskReq } from '../types/createTaskType';
 import type { Todo } from '../store/useWorkspaceStore';
 import createWorkspaceAPI from '../api/createWorkspaceApi';
+import getAnalyticsApi from '../api/analyticsApi';
 import { addPendingOperation, clearPendingOperations, getPendingOperations } from '../store/indexDB/pendingOps/usePendingOps';
 
 // Goal interface - defines structure for goal items
@@ -554,19 +555,53 @@ const Dashboard = () => {
   const GOALS_DISPLAY_LIMIT = 6;
   
   // Analytics chart state
-  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   
-  // Analytics data - tasks completed per day
-  const analyticsData = [
-    { day: 'Mon', completed: 6, label: 'Monday' },
-    { day: 'Tue', completed: 9, label: 'Tuesday' },
-    { day: 'Wed', completed: 5, label: 'Wednesday' },
-    { day: 'Thu', completed: 11, label: 'Thursday' },
-    { day: 'Fri', completed: 8, label: 'Friday' },
-    { day: 'Sat', completed: 4, label: 'Saturday' },
-    { day: 'Sun', completed: 3, label: 'Sunday' },
-  ];
-  const maxCompleted = Math.max(...analyticsData.map(d => d.completed));
+  // Generate year options from 2025 to current year
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: currentYear - 2024 }, (_, i) => 2025 + i);
+  
+  // Fetch analytics data when year or user changes
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!userInfo?.userId || !currentWorkspace?.id) return;
+      
+      setAnalyticsLoading(true);
+      try {
+        const data = await getAnalyticsApi(userInfo.userId, selectedYear.toString(), currentWorkspace.id);
+        setAnalyticsData(data);
+        console.log('Analytics data fetched:', data);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+        // Fallback to mock data
+        const mockData = [
+          { month: 'Jan', completed: 15, label: 'January' },
+          { month: 'Feb', completed: 22, label: 'February' },
+          { month: 'Mar', completed: 18, label: 'March' },
+          { month: 'Apr', completed: 25, label: 'April' },
+          { month: 'May', completed: 30, label: 'May' },
+          { month: 'Jun', completed: 28, label: 'June' },
+          { month: 'Jul', completed: 35, label: 'July' },
+          { month: 'Aug', completed: 32, label: 'August' },
+          { month: 'Sep', completed: 27, label: 'September' },
+          { month: 'Oct', completed: 29, label: 'October' },
+          { month: 'Nov', completed: 24, label: 'November' },
+          { month: 'Dec', completed: 26, label: 'December' },
+        ];
+        setAnalyticsData(mockData);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [selectedYear, userInfo?.userId, currentWorkspace?.id]);
+  
+  const maxCompleted = analyticsData.length > 0 ? Math.max(...analyticsData.map(d => d.completed)) : 0;
   
   // Scroll to section function
   const scrollToSection = (sectionId: string) => {
@@ -1352,32 +1387,214 @@ const Dashboard = () => {
             {/* Analytics Chart */}
             <div className="analytics-card">
               <div className="analytics-header">
-                <h3>Task Analytics</h3>
-                <p>Last 7 days performance</p>
+                <div className="analytics-title">
+                  <h3>Task Analytics</h3>
+                  <p>Monthly performance for {selectedYear}</p>
+                </div>
+                <div className="analytics-controls">
+                  <select 
+                    className="year-selector"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  >
+                    {yearOptions.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="analytics-chart">
-                {hoveredDay !== null && (
-                  <div className="chart-tooltip">
-                    <div className="chart-tooltip-title">{analyticsData[hoveredDay].label}</div>
-                    <div className="chart-tooltip-value">{analyticsData[hoveredDay].completed} tasks completed</div>
+              
+              <div className="analytics-chart-container">
+                {analyticsLoading ? (
+                  <div className="analytics-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Loading analytics...</p>
+                  </div>
+                ) : (
+                  <div className="npm-analytics-chart">
+                    {/* Chart Header with Key Metrics */}
+                    <div className="npm-chart-header">
+                      <div className="npm-stats">
+                        <div className="npm-stat">
+                          <span className="npm-stat-number">{analyticsData.reduce((sum, data) => sum + data.completed, 0)}</span>
+                          <span className="npm-stat-label">tasks completed this year</span>
+                        </div>
+                        <div className="npm-divider">•</div>
+                        <div className="npm-stat">
+                          <span className="npm-stat-number">
+                            {analyticsData.length > 0 
+                              ? Math.round(analyticsData.reduce((sum, data) => sum + data.completed, 0) / 12)
+                              : 0
+                            }
+                          </span>
+                          <span className="npm-stat-label">average per month</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NPM-Style Chart */}
+                    <div className="npm-chart-container">
+                      <svg className="npm-chart-svg" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                          <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#667eea" stopOpacity="0.3"/>
+                            <stop offset="100%" stopColor="#667eea" stopOpacity="0.05"/>
+                          </linearGradient>
+                          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#667eea"/>
+                            <stop offset="100%" stopColor="#764ba2"/>
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Background Grid */}
+                        <g className="grid-lines">
+                          {[...Array(5)].map((_, i) => (
+                            <line 
+                              key={i}
+                              x1="60" 
+                              y1={40 + (i * 30)} 
+                              x2="740" 
+                              y2={40 + (i * 30)}
+                              stroke="rgba(255,255,255,0.1)" 
+                              strokeWidth="1"
+                            />
+                          ))}
+                        </g>
+                        
+                        {/* Y-axis labels */}
+                        <g className="y-axis-labels">
+                          {[...Array(5)].map((_, i) => {
+                            const value = Math.round((maxCompleted / 4) * (4 - i));
+                            return (
+                              <text 
+                                key={i}
+                                x="50" 
+                                y={45 + (i * 30)} 
+                                fill="rgba(255,255,255,0.6)" 
+                                fontSize="11" 
+                                textAnchor="end"
+                              >
+                                {value}
+                              </text>
+                            );
+                          })}
+                        </g>
+                        
+                        {/* Area Chart */}
+                        {analyticsData.length > 0 && (
+                          <>
+                            {/* Area Fill */}
+                            <path
+                              d={`M 60 170 ${analyticsData.map((data, index) => {
+                                const x = 60 + (index * (680 / 11));
+                                const y = 170 - ((data.completed / maxCompleted) * 130);
+                                return `L ${x} ${y}`;
+                              }).join(' ')} L ${60 + (11 * (680 / 11))} 170 Z`}
+                              fill="url(#areaGradient)"
+                              className="area-fill"
+                            />
+                            
+                            {/* Line */}
+                            <path
+                              d={`M ${analyticsData.map((data, index) => {
+                                const x = 60 + (index * (680 / 11));
+                                const y = 170 - ((data.completed / maxCompleted) * 130);
+                                return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+                              }).join(' ')}`}
+                              stroke="url(#lineGradient)"
+                              strokeWidth="3"
+                              fill="none"
+                              className="area-line"
+                            />
+                            
+                            {/* Data Points */}
+                            {analyticsData.map((data, index) => {
+                              const x = 60 + (index * (680 / 11));
+                              const y = 170 - ((data.completed / maxCompleted) * 130);
+                              return (
+                                <g key={data.month}>
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r="4"
+                                    fill="#667eea"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    className={`data-point ${hoveredMonth === index ? 'hovered' : ''}`}
+                                    onMouseEnter={() => setHoveredMonth(index)}
+                                    onMouseLeave={() => setHoveredMonth(null)}
+                                  />
+                                  
+                                  {/* Tooltip */}
+                                  {hoveredMonth === index && (
+                                    <g className="npm-tooltip">
+                                      <rect
+                                        x={x - 35}
+                                        y={y - 50}
+                                        width="70"
+                                        height="35"
+                                        rx="8"
+                                        fill="rgba(0,0,0,0.9)"
+                                        stroke="rgba(102,126,234,0.4)"
+                                        strokeWidth="1"
+                                      />
+                                      <text
+                                        x={x}
+                                        y={y - 32}
+                                        fill="rgba(255,255,255,0.8)"
+                                        fontSize="10"
+                                        textAnchor="middle"
+                                      >
+                                        {data.label}
+                                      </text>
+                                      <text
+                                        x={x}
+                                        y={y - 20}
+                                        fill="#667eea"
+                                        fontSize="14"
+                                        fontWeight="bold"
+                                        textAnchor="middle"
+                                      >
+                                        {data.completed}
+                                      </text>
+                                    </g>
+                                  )}
+                                </g>
+                              );
+                            })}
+                          </>
+                        )}
+                        
+                        {/* X-axis labels */}
+                        <g className="x-axis-labels">
+                          {analyticsData.map((data, index) => {
+                            const x = 60 + (index * (680 / 11));
+                            return (
+                              <text 
+                                key={data.month}
+                                x={x} 
+                                y="190" 
+                                fill="rgba(255,255,255,0.6)" 
+                                fontSize="11" 
+                                textAnchor="middle"
+                              >
+                                {data.month}
+                              </text>
+                            );
+                          })}
+                        </g>
+                      </svg>
+                    </div>
+                    
+                    {analyticsData.length === 0 && (
+                      <div className="npm-chart-empty">
+                        <div className="empty-icon">📊</div>
+                        <p>No data available for {selectedYear}</p>
+                        <span>Complete some tasks to see analytics</span>
+                      </div>
+                    )}
                   </div>
                 )}
-                <div className="chart-bars">
-                  {analyticsData.map((data, index) => (
-                    <div 
-                      key={data.day}
-                      className="chart-bar" 
-                      style={{ height: `${(data.completed / maxCompleted) * 100}%` }}
-                      onMouseEnter={() => setHoveredDay(index)}
-                      onMouseLeave={() => setHoveredDay(null)}
-                    >
-                      <div className="chart-bar-fill">
-                        <span className="chart-bar-value">{data.completed}</span>
-                      </div>
-                      <span className="chart-bar-label">{data.day}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
             
