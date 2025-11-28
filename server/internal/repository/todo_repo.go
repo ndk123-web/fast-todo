@@ -232,6 +232,11 @@ func (r *todoRepo) AnalyticsOfTodos(ctx context.Context, year string, userId str
 		return nil, err
 	}
 
+	workspaceOid, err := primitive.ObjectIDFromHex(workspaceId)
+	if err != nil && workspaceId != "" {
+		return nil, err
+	}
+
 	// Parse the year
 	yearInt := 0
 	fmt.Sscanf(year, "%d", &yearInt)
@@ -243,7 +248,7 @@ func (r *todoRepo) AnalyticsOfTodos(ctx context.Context, year string, userId str
 	startDate := time.Date(yearInt, 1, 1, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(yearInt+1, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// Filter by userId, workspaceId (if provided), and year range
+	// Filter by userId, workspaceId, and year range
 	filter := bson.M{
 		"userId": userOid,
 		"done":   true, // Only count completed todos
@@ -253,9 +258,9 @@ func (r *todoRepo) AnalyticsOfTodos(ctx context.Context, year string, userId str
 		},
 	}
 
-	// Add workspaceId filter if provided
+	// Add workspaceId filter if provided (workspace must match)
 	if workspaceId != "" {
-		filter["workspaceId"] = workspaceId
+		filter["workspaceId"] = workspaceOid
 		fmt.Printf("🏢 Analytics: Filtering by workspace: %s\n", workspaceId)
 	}
 

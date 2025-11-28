@@ -1411,68 +1411,76 @@ const Dashboard = () => {
                     <p>Loading analytics...</p>
                   </div>
                 ) : (
-                  <div className="npm-analytics-chart">
+                  <div className="wave-analytics-chart">
                     {/* Chart Header with Key Metrics */}
-                    <div className="npm-chart-header">
-                      <div className="npm-stats">
-                        <div className="npm-stat">
-                          <span className="npm-stat-number">{analyticsData.reduce((sum, data) => sum + data.completed, 0)}</span>
-                          <span className="npm-stat-label">tasks completed this year</span>
+                    <div className="wave-chart-header">
+                      <div className="wave-stats">
+                        <div className="wave-stat">
+                          <span className="wave-stat-number">{analyticsData.reduce((sum, data) => sum + data.completed, 0)}</span>
+                          <span className="wave-stat-label">tasks completed this year</span>
                         </div>
-                        <div className="npm-divider">•</div>
-                        <div className="npm-stat">
-                          <span className="npm-stat-number">
+                        <div className="wave-divider">•</div>
+                        <div className="wave-stat">
+                          <span className="wave-stat-number">
                             {analyticsData.length > 0 
                               ? Math.round(analyticsData.reduce((sum, data) => sum + data.completed, 0) / 12)
                               : 0
                             }
                           </span>
-                          <span className="npm-stat-label">average per month</span>
+                          <span className="wave-stat-label">average per month</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* NPM-Style Chart */}
-                    <div className="npm-chart-container">
-                      <svg className="npm-chart-svg" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid meet">
+                    {/* Wave-Style Chart */}
+                    <div className="wave-chart-container">
+                      <svg className="wave-chart-svg" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet">
                         <defs>
-                          <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#667eea" stopOpacity="0.3"/>
-                            <stop offset="100%" stopColor="#667eea" stopOpacity="0.05"/>
+                          <linearGradient id="waveGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#667eea" stopOpacity="0.35"/>
+                            <stop offset="50%" stopColor="#667eea" stopOpacity="0.15"/>
+                            <stop offset="100%" stopColor="#667eea" stopOpacity="0.02"/>
                           </linearGradient>
-                          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <linearGradient id="waveLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="#667eea"/>
-                            <stop offset="100%" stopColor="#764ba2"/>
+                            <stop offset="50%" stopColor="#764ba2"/>
+                            <stop offset="100%" stopColor="#667eea"/>
                           </linearGradient>
+                          <filter id="waveShadow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="8" floodOpacity="0.15"/>
+                          </filter>
                         </defs>
                         
-                        {/* Background Grid */}
-                        <g className="grid-lines">
+                        {/* Subtle Background Grid */}
+                        <g className="wave-grid">
                           {[...Array(5)].map((_, i) => (
                             <line 
-                              key={i}
-                              x1="60" 
-                              y1={40 + (i * 30)} 
-                              x2="740" 
-                              y2={40 + (i * 30)}
-                              stroke="rgba(255,255,255,0.1)" 
+                              key={`grid-h-${i}`}
+                              x1="80" 
+                              y1={50 + (i * 36)} 
+                              x2="760" 
+                              y2={50 + (i * 36)}
+                              stroke="rgba(255,255,255,0.05)" 
                               strokeWidth="1"
+                              strokeDasharray="4,4"
                             />
                           ))}
                         </g>
                         
                         {/* Y-axis labels */}
-                        <g className="y-axis-labels">
+                        <g className="wave-y-axis">
                           {[...Array(5)].map((_, i) => {
                             const value = Math.round((maxCompleted / 4) * (4 - i));
                             return (
                               <text 
-                                key={i}
-                                x="50" 
-                                y={45 + (i * 30)} 
-                                fill="rgba(255,255,255,0.6)" 
-                                fontSize="11" 
+                                key={`y-${i}`}
+                                x="70" 
+                                y={57 + (i * 36)} 
+                                fill="rgba(255,255,255,0.5)" 
+                                fontSize="12" 
+                                fontWeight="500"
                                 textAnchor="end"
+                                dominantBaseline="middle"
                               >
                                 {value}
                               </text>
@@ -1480,102 +1488,167 @@ const Dashboard = () => {
                           })}
                         </g>
                         
-                        {/* Area Chart */}
+                        {/* Wave Chart with Smooth Curve */}
                         {analyticsData.length > 0 && (
                           <>
-                            {/* Area Fill */}
-                            <path
-                              d={`M 60 170 ${analyticsData.map((data, index) => {
-                                const x = 60 + (index * (680 / 11));
-                                const y = 170 - ((data.completed / maxCompleted) * 130);
-                                return `L ${x} ${y}`;
-                              }).join(' ')} L ${60 + (11 * (680 / 11))} 170 Z`}
-                              fill="url(#areaGradient)"
-                              className="area-fill"
-                            />
-                            
-                            {/* Line */}
-                            <path
-                              d={`M ${analyticsData.map((data, index) => {
-                                const x = 60 + (index * (680 / 11));
-                                const y = 170 - ((data.completed / maxCompleted) * 130);
-                                return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                              }).join(' ')}`}
-                              stroke="url(#lineGradient)"
-                              strokeWidth="3"
-                              fill="none"
-                              className="area-line"
-                            />
-                            
-                            {/* Data Points */}
-                            {analyticsData.map((data, index) => {
-                              const x = 60 + (index * (680 / 11));
-                              const y = 170 - ((data.completed / maxCompleted) * 130);
+                            {/* Generate smooth curve path */}
+                            {(() => {
+                              const points = analyticsData.map((data, index) => {
+                                const x = 80 + (index * (680 / 11));
+                                const y = 196 - ((data.completed / (maxCompleted || 1)) * 140);
+                                return { x, y, data };
+                              });
+                              
+                              // Generate smooth curve using cubic bezier
+                              let pathData = `M ${points[0].x} ${points[0].y}`;
+                              for (let i = 0; i < points.length - 1; i++) {
+                                const p0 = points[Math.max(0, i - 1)];
+                                const p1 = points[i];
+                                const p2 = points[i + 1];
+                                const p3 = points[Math.min(points.length - 1, i + 2)];
+                                
+                                const cp1x = p1.x + (p2.x - p0.x) / 6;
+                                const cp1y = p1.y + (p2.y - p0.y) / 6;
+                                const cp2x = p2.x - (p3.x - p1.x) / 6;
+                                const cp2y = p2.y - (p3.y - p1.y) / 6;
+                                
+                                pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+                              }
+                              
                               return (
-                                <g key={data.month}>
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r="4"
-                                    fill="#667eea"
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    className={`data-point ${hoveredMonth === index ? 'hovered' : ''}`}
-                                    onMouseEnter={() => setHoveredMonth(index)}
-                                    onMouseLeave={() => setHoveredMonth(null)}
+                                <>
+                                  {/* Gradient Area Fill */}
+                                  <path
+                                    d={`${pathData} L ${points[points.length - 1].x} 196 L 80 196 Z`}
+                                    fill="url(#waveGradient)"
+                                    className="wave-area"
                                   />
                                   
-                                  {/* Tooltip */}
-                                  {hoveredMonth === index && (
-                                    <g className="npm-tooltip">
-                                      <rect
-                                        x={x - 35}
-                                        y={y - 50}
-                                        width="70"
-                                        height="35"
-                                        rx="8"
-                                        fill="rgba(0,0,0,0.9)"
-                                        stroke="rgba(102,126,234,0.4)"
-                                        strokeWidth="1"
+                                  {/* Wave Line */}
+                                  <path
+                                    d={pathData}
+                                    stroke="url(#waveLineGradient)"
+                                    strokeWidth="3.5"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="wave-line"
+                                    filter="url(#waveShadow)"
+                                  />
+                                  
+                                  {/* Interactive Data Points */}
+                                  {points.map((point, index) => (
+                                    <g key={`point-${index}`} className="wave-point-group">
+                                      <circle
+                                        cx={point.x}
+                                        cy={point.y}
+                                        r="5"
+                                        fill="transparent"
+                                        stroke="transparent"
+                                        className="wave-point-hit"
+                                        onMouseEnter={() => setHoveredMonth(index)}
+                                        onMouseLeave={() => setHoveredMonth(null)}
                                       />
-                                      <text
-                                        x={x}
-                                        y={y - 32}
-                                        fill="rgba(255,255,255,0.8)"
-                                        fontSize="10"
-                                        textAnchor="middle"
-                                      >
-                                        {data.label}
-                                      </text>
-                                      <text
-                                        x={x}
-                                        y={y - 20}
+                                      
+                                      {/* Data Point Indicator */}
+                                      <circle
+                                        cx={point.x}
+                                        cy={point.y}
+                                        r="3.5"
                                         fill="#667eea"
-                                        fontSize="14"
-                                        fontWeight="bold"
-                                        textAnchor="middle"
-                                      >
-                                        {data.completed}
-                                      </text>
+                                        stroke="white"
+                                        strokeWidth="2.5"
+                                        className={`wave-point ${hoveredMonth === index ? 'active' : ''}`}
+                                      />
+                                      
+                                      {/* Hover Glow */}
+                                      {hoveredMonth === index && (
+                                        <>
+                                          <circle
+                                            cx={point.x}
+                                            cy={point.y}
+                                            r="8"
+                                            fill="rgba(102, 126, 234, 0.2)"
+                                            className="wave-glow"
+                                          />
+                                          <circle
+                                            cx={point.x}
+                                            cy={point.y}
+                                            r="12"
+                                            fill="rgba(102, 126, 234, 0.1)"
+                                            className="wave-glow-outer"
+                                          />
+                                        </>
+                                      )}
+                                      
+                                      {/* Tooltip */}
+                                      {hoveredMonth === index && (
+                                        <g className="wave-tooltip">
+                                          <rect
+                                            x={Math.max(50, Math.min(point.x - 55, 720))}
+                                            y={point.y - 75}
+                                            width="110"
+                                            height="60"
+                                            rx="10"
+                                            fill="rgba(0, 0, 0, 0.95)"
+                                            stroke="rgba(102, 126, 234, 0.6)"
+                                            strokeWidth="2"
+                                            filter="url(#waveShadow)"
+                                          />
+                                          <text
+                                            x={Math.max(55, Math.min(point.x, 775))}
+                                            y={point.y - 54}
+                                            fill="rgba(255, 255, 255, 0.7)"
+                                            fontSize="12"
+                                            fontWeight="600"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                          >
+                                            {point.data.label}
+                                          </text>
+                                          <text
+                                            x={Math.max(55, Math.min(point.x, 775))}
+                                            y={point.y - 36}
+                                            fill="#667eea"
+                                            fontSize="18"
+                                            fontWeight="900"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                          >
+                                            {point.data.completed}
+                                          </text>
+                                          <text
+                                            x={Math.max(55, Math.min(point.x, 775))}
+                                            y={point.y - 20}
+                                            fill="rgba(255, 255, 255, 0.55)"
+                                            fontSize="11"
+                                            textAnchor="middle"
+                                            dominantBaseline="middle"
+                                          >
+                                            tasks completed
+                                          </text>
+                                        </g>
+                                      )}
                                     </g>
-                                  )}
-                                </g>
+                                  ))}
+                                </>
                               );
-                            })}
+                            })()}
                           </>
                         )}
                         
                         {/* X-axis labels */}
-                        <g className="x-axis-labels">
+                        <g className="wave-x-axis">
                           {analyticsData.map((data, index) => {
-                            const x = 60 + (index * (680 / 11));
+                            const x = 80 + (index * (680 / 11));
                             return (
                               <text 
-                                key={data.month}
+                                key={`x-${data.month}`}
                                 x={x} 
-                                y="190" 
-                                fill="rgba(255,255,255,0.6)" 
-                                fontSize="11" 
+                                y="260" 
+                                fill="rgba(255, 255, 255, 0.6)" 
+                                fontSize="12" 
+                                fontWeight="500"
                                 textAnchor="middle"
                               >
                                 {data.month}
@@ -1587,7 +1660,7 @@ const Dashboard = () => {
                     </div>
                     
                     {analyticsData.length === 0 && (
-                      <div className="npm-chart-empty">
+                      <div className="wave-chart-empty">
                         <div className="empty-icon">📊</div>
                         <p>No data available for {selectedYear}</p>
                         <span>Complete some tasks to see analytics</span>

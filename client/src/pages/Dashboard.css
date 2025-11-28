@@ -2633,3 +2633,242 @@
   }
 }
 
+/* ============================================ */
+/* PROFESSIONAL WAVE ANALYTICS CHART - NPM STYLE */
+/* ============================================ */
+
+.wave-analytics-chart {
+  margin-top: 32px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.15);
+}
+
+/* Wave Chart Header with Metrics */
+.wave-chart-header {
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wave-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.wave-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.wave-stat-number {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.wave-stat-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.wave-divider {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* Wave Chart Container */
+.wave-chart-container {
+  position: relative;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 20px 0;
+}
+
+.wave-chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 250px;
+  display: block;
+}
+
+/* Wave Grid and Axis Styling */
+.wave-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+  shape-rendering: crispEdges;
+}
+
+.wave-y-axis text,
+.wave-x-axis text {
+  fill: rgba(255, 255, 255, 0.55);
+}
+
+/* Wave Area and Line */
+.wave-area {
+  animation: areaFadeIn 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.wave-line {
+  animation: lineDrawIn 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  opacity: 0;
+}
+
+/* Wave Points and Interactions */
+.wave-point {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wave-point-group:hover .wave-point {
+  r: 5;
+  stroke-width: 3;
+}
+
+.wave-glow {
+  animation: glowPulse 1.5s ease-in-out infinite;
+  opacity: 0;
+}
+
+.wave-glow-outer {
+  animation: glowPulseOuter 1.5s ease-in-out infinite;
+  opacity: 0;
+}
+
+.wave-point-group:hover .wave-glow,
+.wave-point-group:hover .wave-glow-outer {
+  opacity: 1;
+}
+
+/* Wave Tooltip */
+.wave-tooltip {
+  animation: tooltipSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.wave-tooltip rect {
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.3));
+}
+
+/* Wave Point Hit Area */
+.wave-point-hit {
+  cursor: pointer;
+}
+
+/* Empty State */
+.wave-chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 40px 20px;
+}
+
+.wave-chart-empty .empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.wave-chart-empty p {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.wave-chart-empty span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Wave Animations */
+@keyframes lineDrawIn {
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes areaFadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    r: 8;
+    opacity: 0.2;
+  }
+  50% {
+    r: 10;
+    opacity: 0.4;
+  }
+}
+
+@keyframes glowPulseOuter {
+  0%, 100% {
+    r: 12;
+    opacity: 0.1;
+  }
+  50% {
+    r: 16;
+    opacity: 0.2;
+  }
+}
+
+/* Responsive Design for Wave Chart */
+@media (max-width: 768px) {
+  .wave-analytics-chart {
+    padding: 20px;
+    margin-top: 24px;
+    border-radius: 16px;
+  }
+  
+  .wave-chart-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+  
+  .wave-stats {
+    gap: 16px;
+    flex-direction: column;
+  }
+  
+  .wave-stat-number {
+    font-size: 28px;
+  }
+  
+  .wave-stat-label {
+    font-size: 13px;
+  }
+  
+  .wave-chart-container {
+    padding: 12px 0;
+  }
+  
+  .wave-chart-svg {
+    min-height: 220px;
+  }
+}
+
