@@ -6,7 +6,7 @@ import useUserStore from "../store/useUserInfo";
 const refreshTokenApi = async (data: User) => {
   try {
     const response: AxiosResponse = await api.post(
-      `/api/v1/user/refresh-token`,
+      `/user/refresh-token`,
       {},
       {
         headers: {

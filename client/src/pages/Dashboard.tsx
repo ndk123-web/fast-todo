@@ -1294,6 +1294,17 @@ const Dashboard = () => {
           
           {/* Current Workspace Display */}
           <div className="dashboard-top-header-right">
+            <button 
+              className="settings-icon-btn"
+              onClick={() => navigate('/settings')}
+              title="Settings"
+            >
+              <svg width="30" height="30" viewBox="0 0 20 20" fill="none">
+                {/* <path d="M10 12.5C8.61929 12.5 7.5 11.3807 7.5 10C7.5 8.61929 8.61929 7.5 10 7.5C11.3807 7.5 12.5 8.61929 12.5 10C12.5 11.3807 11.3807 12.5 10 12.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/> */}
+                <path d="M10.9 1.5L11.2 2.8C11.5 2.9 11.8 3.1 12.1 3.3L13.4 2.9L14.3 4.6L13.3 5.4C13.4 5.8 13.4 6.2 13.3 6.6L14.3 7.4L13.4 9.1L12.1 8.7C11.8 8.9 11.5 9.1 11.2 9.2L10.9 10.5H9.1L8.8 9.2C8.5 9.1 8.2 8.9 7.9 8.7L6.6 9.1L5.7 7.4L6.7 6.6C6.6 6.2 6.6 5.8 6.7 5.4L5.7 4.6L6.6 2.9L7.9 3.3C8.2 3.1 8.5 2.9 8.8 2.8L9.1 1.5H10.9Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            
             <div className="current-workspace-display">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M2.25 5.25C2.25 4.83579 2.41462 4.43855 2.70765 4.14549C3.00067 3.85243 3.39782 3.6875 3.8125 3.6875H6.75L8.25 6H14.1875C14.6022 6 14.9994 6.16462 15.2924 6.45765C15.5855 6.75067 15.75 7.14782 15.75 7.5625V12.75C15.75 13.1647 15.5855 13.5619 15.2924 13.8549C14.9994 14.148 14.6022 14.3125 14.1875 14.3125H3.8125C3.39782 14.3125 3.00067 14.148 2.70765 13.8549C2.41462 13.5619 2.25 13.1647 2.25 12.75V5.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
