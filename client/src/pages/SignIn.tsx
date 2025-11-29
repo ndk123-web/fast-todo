@@ -32,7 +32,7 @@ const SignIn = () => {
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Error during sign in:', error);
-      showToast(error?.message || 'Unexpected sign in error', 'error');
+      showToast('Password / Username is Invalid', 'error');
     }
   };
 
