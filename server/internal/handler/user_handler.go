@@ -17,6 +17,7 @@ type UserHandler interface {
 	SignUpUser(w http.ResponseWriter, r *http.Request)
 	RefreshToken(w http.ResponseWriter, r *http.Request)
 	SignInUser(w http.ResponseWriter, r *http.Request)
+	UpdateUserName(w http.ResponseWriter, r *http.Request)
 }
 
 type userHandler struct {
@@ -138,6 +139,32 @@ func (h *userHandler) SignInUser(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"response": response})
+}
+
+type updateUserNameBody struct {
+	NewName string `json:"newName"`
+}
+
+func (h *userHandler) UpdateUserName(w http.ResponseWriter, r *http.Request) {
+	var reqBody updateUserNameBody
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	userId := r.PathValue("userId")
+	if userId == "" || reqBody.NewName == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "User Id is Empty In Handler", "success": "false"})
+		return
+	}
+
+	isUpdated, err := h.service.UpdateUserName(context.Background(), userId, reqBody.NewName)
+	if err != nil || !isUpdated {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"response": "Success Update User Name", "success": "true"})
 }
 
 func NewUserHandler(service service.UserService) UserHandler {

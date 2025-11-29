@@ -25,6 +25,7 @@ type UserRepository interface {
 	GetUserTodos(ctx context.Context, userId string) ([]model.Todo, error)
 	SignUpUser(ctx context.Context, email string, password string, fullName string) (*SignUpResponse, error)
 	SignInUser(ctx context.Context, email string, password string) (*SignUpResponse, error)
+	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
 }
 
 type userRepo struct {
@@ -157,6 +158,28 @@ func ValidatePassword(password string, hashedPassword string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *userRepo) UpdateUserName(ctx context.Context, userId string, newName string) (bool, error) {
+	if userId == "" || newName == "" {
+		return false, errors.New("userId or newName is empty")
+	}
+
+	userIdOid, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return false, err
+	}
+
+	filter := bson.M{"_id": userIdOid}
+	update := bson.M{"$set": bson.M{"fullName": newName, "updatedAt": time.Now()}}
+
+	updated, err := r.userColletion.UpdateOne(ctx, filter, update)
+
+	if err != nil {
+		return false, err
+	}
+
+	return updated.ModifiedCount > 0, nil
 }
 
 func NewUserRepository(todoCol *mongo.Collection, userCol *mongo.Collection) UserRepository {

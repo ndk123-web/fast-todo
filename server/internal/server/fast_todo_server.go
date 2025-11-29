@@ -43,6 +43,7 @@ func (s *Server) Start(port string) error {
 	// No Need Of Middleware (Signin and Signup)
 	mux.HandleFunc("POST /api/v1/users/signup", s.userHandler.SignUpUser)
 	mux.HandleFunc("POST /api/v1/users/signin", s.userHandler.SignInUser)
+	mux.Handle("PUT /api/v1/users/update-name/{userId}", middleware.AuthMiddleware(http.HandlerFunc(s.userHandler.UpdateUserName)))
 
 	// for the refresh token routes (Currently No Need)
 	mux.HandleFunc("POST /api/v1/user/refresh-token", s.userHandler.RefreshToken)

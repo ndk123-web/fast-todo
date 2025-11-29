@@ -16,6 +16,7 @@ type UserService interface {
 	GetUserTodos(ctx context.Context, userId string) ([]model.Todo, error)
 	SignUpUser(ctx context.Context, email string, password string, fullName string) (*repository.SignUpResponse, error)
 	SignInUser(ctx context.Context, email string, password string) (*repository.SignUpResponse, error)
+	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
 }
 
 type userService struct {
@@ -34,7 +35,7 @@ func (s *userService) SignUpUser(ctx context.Context, email string, password str
 		return nil, err
 	}
 
-	response, err := s.repo.SignUpUser(ctx, email, hashedPassword,fullName)
+	response, err := s.repo.SignUpUser(ctx, email, hashedPassword, fullName)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +81,14 @@ func BcryptForPassword(password string) (string, error) {
 
 	hashedString := string(hashed)
 	return hashedString, nil
+}
+
+func (s *userService) UpdateUserName(ctx context.Context, userId string, newName string) (bool, error) {
+	if userId == "" || newName == "" {
+		return false, fmt.Errorf("userId or newName is empty")
+	}
+
+	return s.repo.UpdateUserName(ctx, userId, newName)
 }
 
 func NewUserService(repo repository.UserRepository) UserService {
