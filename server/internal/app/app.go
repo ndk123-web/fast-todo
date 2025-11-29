@@ -11,6 +11,7 @@ import (
 	"github.com/ndk123-web/fast-todo/internal/repository"
 	"github.com/ndk123-web/fast-todo/internal/server"
 	"github.com/ndk123-web/fast-todo/internal/service"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -42,6 +43,41 @@ func Run() error {
 	userCollection := client.Database("golangdb").Collection("users")
 	goalCollection := client.Database("golangdb").Collection("goals")
 	workspaceCollection := client.Database("golangdb").Collection("workspaces")
+
+	// Create Indexes on Collections
+	wsModel := mongo.IndexModel{
+		Keys: bson.D{
+			{"userId", 1},
+			{"workspaceName", 1},
+		},
+		Options: options.Index().SetUnique(true), // prevents duplicates
+	}
+	workspaceCollection.Indexes().CreateOne(ctx, wsModel)
+
+	userMode := mongo.IndexModel{
+		Keys: bson.D{
+			{"email", 1},
+		},
+		Options: options.Index().SetUnique(true), // prevents duplicates
+	}
+	userCollection.Indexes().CreateOne(ctx, userMode)
+
+	todoModel := mongo.IndexModel{
+		Keys: bson.D{
+			{"userId", 1},
+			{"workspaceId", 1},
+		},
+	}
+	todoCollection.Indexes().CreateOne(ctx, todoModel)
+
+	// 
+	goalModel := mongo.IndexModel{
+		Keys: bson.D{
+			{"userId", 1},
+			{"workspaceId", 1},
+		},
+	}
+	goalCollection.Indexes().CreateOne(ctx, goalModel)
 
 	// todorepos
 	todoRepo := repository.NewTodoRepository(todoCollection)
