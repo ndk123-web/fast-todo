@@ -3,23 +3,34 @@ import { Link, useNavigate } from 'react-router-dom';
 import useUserStore, { type User } from '../store/useUserInfo';
 import './Settings.css';
 import updateUserNameApi from '../api/updateUserNameApi';
+import { useToast } from '../components/ToastProvider';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { userInfo, signOutUser, signinUser } = useUserStore();
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(userInfo?.fullName || '');
 
   const handleSaveName = async () => {
-    if (!userInfo) return;
+    if (!userInfo) {
+      showToast('Not authenticated', 'error');
+      return;
+    }
     const trimmed = newName.trim();
-    
-    if (trimmed && trimmed !== userInfo.fullName) {
+    if (!trimmed) {
+      showToast('Name cannot be empty', 'warning');
+      return;
+    }
+    if (trimmed === userInfo.fullName) {
+      showToast('Name unchanged', 'info');
+      return;
+    }
+    try {
       const response: any = await updateUserNameApi({
         userId: userInfo.userId,
         newName: trimmed,
       });
-
       if (response && response.success === 'true') {
         const updatedUser: User = {
           email: userInfo.email,
@@ -31,12 +42,18 @@ const Settings = () => {
         };
         signinUser(updatedUser);
         setIsEditingName(false);
+        showToast('Name updated successfully', 'success');
+      } else {
+        showToast(response?.message || 'Failed to update name', 'error');
       }
+    } catch (e: any) {
+      showToast(e?.message || 'Unexpected error updating name', 'error');
     }
   };
 
   const handleLogout = () => {
     signOutUser();
+    showToast('Signed out', 'info');
     navigate('/');
   };
 

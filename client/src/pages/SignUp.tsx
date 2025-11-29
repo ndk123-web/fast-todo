@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import signUpUserApi from '../api/signUpUserApi';
 import useUserStore from '../store/useUserInfo';
 import './SignUp.css';
+import { useToast } from '../components/ToastProvider';
 
 const SignUp = () => {
   const [name, setName] = useState('');
@@ -12,30 +13,37 @@ const SignUp = () => {
   const navigate = useNavigate();
   const { signinUser } = useUserStore();
 
+  const { showToast } = useToast();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name || !email || !password || !confirmPassword) {
+      showToast('All fields are required', 'warning');
+      return;
+    }
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      showToast('Passwords do not match', 'error');
       return;
     }
 
     try {
-      const response = await signUpUserApi({ fullName: name, email, password });
-      if (response && response.response) {
-        console.log('Sign Up Response:', response);
-        signinUser(response.response);
-        navigate('/dashboard'); 
+      const response: any = await signUpUserApi({ fullName: name, email, password });
+      console.log('Sign Up Response:', response);
+      if (response?.success && response.success !== 'true') {
+        showToast(response?.Error || 'Sign up failed', 'error');
+        return;
       }
-    } catch (error) {
+      if (response && response.response) {
+        signinUser(response.response);
+        showToast('Account created successfully', 'success');
+        navigate('/dashboard');
+      } else {
+        showToast('Invalid sign up response', 'error');
+      }
+    } catch (error: any) {
       console.error('Sign up error:', error);
-      alert('Failed to sign up');
+      showToast(error?.message || 'Unexpected sign up error', 'error');
     }
-
-
-    // Handle sign up logic here
-    console.log('Sign up:', { name, email, password });
-
-    navigate('/dashboard');
   };
 
   return (

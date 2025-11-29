@@ -4,6 +4,7 @@ import signInUserApi from '../api/signInUserApi';
 import type { signInResponse } from '../types/signType';
 import useUserStore from '../store/useUserInfo';
 import './SignIn.css';
+import { useToast } from '../components/ToastProvider';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
@@ -11,18 +12,27 @@ const SignIn = () => {
   const navigate = useNavigate();
   let { signinUser } = useUserStore();
 
+  const { showToast } = useToast();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    try { 
-       const response: signInResponse = await signInUserApi({email,password})
-       console.log('Sign In Response:', response);
-
-       signinUser(response.response)
-    navigate('/dashboard');
+    if (!email || !password) {
+      showToast('Email & password required', 'warning');
+      return;
     }
-    catch (error) {
+    try {
+      const response: signInResponse & { success?: string; Error?: string } = await signInUserApi({ email, password });
+      console.log('Sign In Response:', response);
+      if (response.success && response.success !== 'true') {
+        showToast('Password / Username is Invalid', 'error');
+        return;
+      }
+      signinUser(response.response);
+      showToast('Signed in successfully', 'success');
+      navigate('/dashboard');
+    } catch (error: any) {
       console.error('Error during sign in:', error);
+      showToast(error?.message || 'Unexpected sign in error', 'error');
     }
   };
 
