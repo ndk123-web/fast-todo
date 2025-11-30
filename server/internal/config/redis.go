@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var rdb *redis.Client
+var RedisClient *redis.Client
 
 func InitRedis() {
 	ctx := context.Background()
@@ -28,7 +28,7 @@ func InitRedis() {
 		log.Fatal("REDIS_PASSWORD environment variable is not set")
 	}
 
-	rdb = redis.NewClient(&redis.Options{
+	RedisClient = redis.NewClient(&redis.Options{
 		Addr:     redisHost,
 		Username: redisUsername,
 		Password: redisPassword,
@@ -36,20 +36,20 @@ func InitRedis() {
 	})
 
 	// Test the connection
-	_, err := rdb.Ping(ctx).Result()
+	_, err := RedisClient.Ping(ctx).Result()
 	if err != nil {
 		log.Printf("Failed to connect to Redis: %v", err)
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
 
 	// Test set/get operation
-	err = rdb.Set(ctx, "foo", "bar", 0).Err()
+	err = RedisClient.Set(ctx, "foo", "bar", 0).Err()
 	if err != nil {
 		log.Printf("Failed to set test key in Redis: %v", err)
 		panic(err)
 	}
 
-	result, err := rdb.Get(ctx, "foo").Result()
+	result, err := RedisClient.Get(ctx, "foo").Result()
 	if err != nil {
 		log.Printf("Failed to get test key from Redis: %v", err)
 		panic(err)

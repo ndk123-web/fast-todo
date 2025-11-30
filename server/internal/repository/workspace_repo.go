@@ -98,7 +98,7 @@ func (r *workspaceRepository) GetAllUserWorkspace(ctx context.Context, userId st
 		if err := cursor.Decode(&part); err != nil {
 			return nil, err
 		}
-		fmt.Println("Part: ", part)
+		// fmt.Println("Part: ", part)
 		result = append(result, part)
 	}
 

@@ -577,9 +577,22 @@ const Dashboard = () => {
       
       setAnalyticsLoading(true);
       try {
-        const data = await getAnalyticsApi(userInfo.userId, selectedYear.toString(), currentWorkspace.id);
-        setAnalyticsData(data);
-        console.log('Analytics data fetched:', data);
+        let data: any = await getAnalyticsApi(userInfo.userId, selectedYear.toString(), currentWorkspace.id);
+        // Don't parse here since the API already returns parsed data
+        // If it's a string, try to parse it, otherwise use it directly
+        let parsedData = data;
+        if (typeof data === 'string') {
+          try {
+            parsedData = JSON.parse(data);
+          } catch (parseError) {
+            console.error('Failed to parse analytics data:', parseError);
+            parsedData = [];
+          }
+        }
+        // Ensure data is always an array
+        const safeData = Array.isArray(parsedData) ? parsedData : [];
+        setAnalyticsData(safeData);
+        console.log('Analytics data fetched:', safeData);
       } catch (error) {
         console.error('Failed to fetch analytics:', error);
         // Fallback to mock data
@@ -606,7 +619,7 @@ const Dashboard = () => {
     fetchAnalyticsData();
   }, [selectedYear, userInfo?.userId, currentWorkspace?.id]);
   
-  const maxCompleted = analyticsData.length > 0 ? Math.max(...analyticsData.map(d => d.completed)) : 0;
+  const maxCompleted = (Array.isArray(analyticsData) && analyticsData.length > 0) ? Math.max(...analyticsData.map(d => d.completed)) : 0;
   
   // Scroll to section function
   const scrollToSection = (sectionId: string) => {
@@ -1557,13 +1570,13 @@ const Dashboard = () => {
                     <div className="wave-chart-header">
                       <div className="wave-stats">
                         <div className="wave-stat">
-                          <span className="wave-stat-number">{analyticsData.reduce((sum, data) => sum + data.completed, 0)}</span>
+                          <span className="wave-stat-number">{Array.isArray(analyticsData) ? analyticsData.reduce((sum, data) => sum + data.completed, 0) : 0}</span>
                           <span className="wave-stat-label">tasks completed this year</span>
                         </div>
                         <div className="wave-divider">•</div>
                         <div className="wave-stat">
                           <span className="wave-stat-number">
-                            {analyticsData.length > 0 
+                            {Array.isArray(analyticsData) && analyticsData.length > 0 
                               ? Math.round(analyticsData.reduce((sum, data) => sum + data.completed, 0) / 12)
                               : 0
                             }
@@ -1631,7 +1644,7 @@ const Dashboard = () => {
                         </g>
                         
                         {/* Wave Chart with Smooth Curve */}
-                        {analyticsData.length > 0 && (
+                        {Array.isArray(analyticsData) && analyticsData.length > 0 && (
                           <>
                             {/* Generate smooth curve path */}
                             {(() => {
@@ -1791,7 +1804,7 @@ const Dashboard = () => {
                         
                         {/* X-axis labels */}
                         <g className="wave-x-axis">
-                          {analyticsData.map((data, index) => {
+                          {Array.isArray(analyticsData) && analyticsData.length > 0 && analyticsData.map((data, index) => {
                             const x = 80 + (index * (680 / 11));
                             return (
                               <text 
@@ -1811,7 +1824,7 @@ const Dashboard = () => {
                       </svg>
                     </div>
                     
-                    {analyticsData.length === 0 && (
+                    {(!Array.isArray(analyticsData) || analyticsData.length === 0) && (
                       <div className="wave-chart-empty">
                         <div className="empty-icon">📊</div>
                         <p>No data available for {selectedYear}</p>

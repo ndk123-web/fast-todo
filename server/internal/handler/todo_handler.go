@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ndk123-web/fast-todo/internal/config"
 	"github.com/ndk123-web/fast-todo/internal/middleware"
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"github.com/ndk123-web/fast-todo/internal/service"
@@ -66,6 +67,16 @@ func (h *todoHandler) ToogleTodo(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": err.Error()})
 		return
+	}
+
+	// redis caching for removing key of analytics
+	rdb := config.RedisClient
+	redisKey := fmt.Sprintf("analytics:%s:%s", reqBody.UserId, "2025") // assuming current year is 2025
+	err := rdb.Del(context.Background(), redisKey).Err()
+	if err != nil {
+		fmt.Printf("ToogleTodo: Redis DEL error: %v\n", err)
+	} else {
+		fmt.Printf(" ToogleTodo: Deleted cache key %s\n", redisKey)
 	}
 
 	ok, err := h.service.ToggleTodo(context.Background(), reqBody.ID, reqBody.Toggle, reqBody.UserId)
@@ -214,6 +225,22 @@ func (h *todoHandler) AnalyticsOfTodos(w http.ResponseWriter, r *http.Request) {
 	year := r.PathValue("year")
 	userId := r.PathValue("userId")
 
+	// initialize redis client
+	rdb := config.RedisClient
+
+	// Added Redis Caching Layer
+	redisKey := fmt.Sprintf("analytics:%s:%s", userId, year)
+	result, err := rdb.Get(context.Background(), redisKey).Result()
+	if err != nil {
+		fmt.Printf("Analytics: Redis GET error: %v\n", err)
+	}
+	if err == nil {
+		fmt.Printf("Analytics: Cache hit for key %s\n", redisKey)
+		// fmt.Print("Result: ", result)
+		json.NewEncoder(w).Encode(map[string]any{"success": "true", "response": result})
+		return
+	}
+
 	// Get request body for workspaceId
 	var reqBody analyticsRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
@@ -222,7 +249,7 @@ func (h *todoHandler) AnalyticsOfTodos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("📊 Analytics Request - Year: %s, UserId: %s, WorkspaceId: %s\n", year, userId, reqBody.WorkspaceId)
+	fmt.Printf("Analytics Request - Year: %s, UserId: %s, WorkspaceId: %s\n", year, userId, reqBody.WorkspaceId)
 
 	if year == "" || userId == "" {
 		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": "Year / UserId is empty"})
@@ -231,11 +258,23 @@ func (h *todoHandler) AnalyticsOfTodos(w http.ResponseWriter, r *http.Request) {
 
 	analytics, err := h.service.AnalyticsOfTodos(context.Background(), year, userId, reqBody.WorkspaceId)
 	if err != nil {
-		fmt.Printf("❌ Analytics: Service error: %v\n", err)
+		fmt.Printf("Analytics: Service error: %v\n", err)
 		json.NewEncoder(w).Encode(map[string]any{"success": "false", "Error": err.Error()})
 		return
 	}
 
-	fmt.Printf("✅ Analytics: Returning data: %+v\n", analytics)
+	// Cache the result in Redis
+	analyticsJSON, err := json.Marshal(analytics)
+	if err != nil {
+		fmt.Printf("Analytics: Error marshaling analytics data: %v\n", err)
+	}
+	err = rdb.Set(context.Background(), redisKey, analyticsJSON, 0).Err()
+	if err != nil {
+		fmt.Printf(" Analytics: Redis SET error: %v\n", err)
+	} else {
+		fmt.Printf(" Analytics: Cached result with key %s\n", redisKey)
+	}
+
+	fmt.Printf(" Analytics: Returning data: %+v\n", analytics)
 	json.NewEncoder(w).Encode(map[string]any{"success": "true", "response": analytics})
 }
