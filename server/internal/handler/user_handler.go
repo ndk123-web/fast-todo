@@ -3,13 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/golang-jwt/jwt"
+	cfg "github.com/ndk123-web/fast-todo/internal/config"
+	"github.com/ndk123-web/fast-todo/internal/repository"
+	"github.com/ndk123-web/fast-todo/internal/service"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/golang-jwt/jwt"
-	"github.com/ndk123-web/fast-todo/internal/repository"
-	"github.com/ndk123-web/fast-todo/internal/service"
 )
 
 type UserHandler interface {
@@ -118,27 +119,62 @@ func (h *userHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"_accessToken": tokenStr, "_refreshToken": refreshStr, "success": "true"})
 }
 
+type userSignInBody struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	GoogleLogin bool   `json:"googleLogin"`
+	IdToken     string `json:"idToken"`
+}
+
 // sign in user handler
 func (h *userHandler) SignInUser(w http.ResponseWriter, r *http.Request) {
-	var userDetails repository.UserStruct
-	if err := json.NewDecoder(r.Body).Decode(&userDetails); err != nil {
-		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+	var body userSignInBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+		return
+	}
+	fmt.Println("user Sign in body: ", body)
+
+	// Branch: Google login
+	if body.GoogleLogin {
+		if body.IdToken == "" { // idToken required for google flow
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Missing Google ID token", "success": "false"})
+			return
+		}
+		// Verify ID token with Firebase
+		token, err := cfg.FirebaseAuth.VerifyIDToken(context.Background(), body.IdToken)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Invalid Google token", "success": "false"})
+			return
+		}
+		emailClaim, ok := token.Claims["email"].(string)
+		if !ok || emailClaim == "" {
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Email missing in Google token", "success": "false"})
+			return
+		}
+		nameClaim, _ := token.Claims["name"].(string)
+		resp, err := h.service.SignInGoogleUser(context.Background(), emailClaim, nameClaim)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"response": resp, "success": "true"})
 		return
 	}
 
-	if userDetails.Email == "" || userDetails.Password == "" {
-		json.NewEncoder(w).Encode(map[string]string{"Error": "Email/Password Empty"})
+	// Normal login path
+	if body.Email == "" || body.Password == "" {
+		json.NewEncoder(w).Encode(map[string]string{"Error": "Email/Password Empty", "success": "false"})
 		return
 	}
-
-	response, err := h.service.SignInUser(context.Background(), userDetails.Email, userDetails.Password)
+	resp, err := h.service.SignInUser(context.Background(), body.Email, body.Password)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error(), "success": "false"})
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"response": response})
+	json.NewEncoder(w).Encode(map[string]any{"response": resp, "success": "true"})
 }
 
 type updateUserNameBody struct {

@@ -12,6 +12,7 @@ const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleLogin , setGoogleLogin] = useState(false)
   const navigate = useNavigate();
   let { signinUser } = useUserStore();
 
@@ -24,7 +25,7 @@ const SignIn = () => {
       return;
     }
     try {
-      const response: signInResponse & { success?: string; Error?: string } = await signInUserApi({ email, password });
+      const response: signInResponse & { success?: string; Error?: string } = await signInUserApi({ email, password, googleLogin, idToken: "" });
       console.log('Sign In Response:', response);
       if (response.success && response.success !== 'true') {
         showToast('Password / Username is Invalid', 'error');
@@ -42,10 +43,35 @@ const SignIn = () => {
   const handleSignInWithGoogle = async () => {
     try {
       setGoogleLoading(true);
+      // local flag avoids async state race; we still set UI state below
+      const googleFlag = true;
+      setGoogleLogin(true);
       const googleAuthProvider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, googleAuthProvider);
       const firebaseUser = result.user;
+      const idToken = await firebaseUser.getIdToken();
       console.log("Firebase User:", firebaseUser);
+      console.log("Google Login sending flag: ", googleFlag);
+      try {
+      const response: signInResponse & { success?: string; Error?: string } = await signInUserApi({ 
+        email: firebaseUser.email || '',
+        password: '',
+        googleLogin: googleFlag,
+        idToken 
+      });
+      console.log('Sign In Response:', response);
+      if (response.success && response.success !== 'true') {
+        showToast('Password / Username is Invalid', 'error');
+        return;
+      }
+      signinUser(response.response);
+      showToast('Signed in successfully', 'success');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error during sign in:', error);
+      showToast('Password / Username is Invalid', 'error');
+    }
+
       showToast('Google sign-in success', 'success');
       // If you want to immediately treat this as a backend sign-in, call an API here with idToken.
       // navigate('/dashboard');
@@ -54,6 +80,7 @@ const SignIn = () => {
       showToast(err?.message || 'Google sign-in failed', 'error');
     } finally {
       setGoogleLoading(false);
+      setGoogleLogin(false)
     }
   };
 

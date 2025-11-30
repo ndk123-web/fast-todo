@@ -26,6 +26,7 @@ type UserRepository interface {
 	SignUpUser(ctx context.Context, email string, password string, fullName string) (*SignUpResponse, error)
 	SignInUser(ctx context.Context, email string, password string) (*SignUpResponse, error)
 	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
+	SignInGoogleUser(ctx context.Context, email string, fullName string) (*SignUpResponse, error)
 }
 
 type userRepo struct {
@@ -150,6 +151,49 @@ func (r *userRepo) SignInUser(ctx context.Context, email string, password string
 		UserId:   userId,
 		FullName: user.FullName,
 	}, nil
+}
+
+// SignInGoogleUser will upsert a user (create if not exists) without password auth
+// Used when Google ID token already verified upstream.
+func (r *userRepo) SignInGoogleUser(ctx context.Context, email string, fullName string) (*SignUpResponse, error) {
+	if email == "" {
+		return nil, errors.New("email empty")
+	}
+
+	// Try to find existing user
+	filter := bson.M{"email": email}
+
+	var existing SignInUserRequest
+	err := r.userColletion.FindOne(ctx, filter).Decode(&existing)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			// Create new user with random password placeholder (hashed)
+			randPass := primitive.NewObjectID().Hex()
+			hashed, hErr := nbcrypt.BcryptForPassword(randPass)
+			if hErr != nil {
+				return nil, hErr
+			}
+			now := time.Now()
+			newUser := UserStruct{Email: email, Password: hashed, CreatedAt: now, UpdatedAt: now, FullName: fullName}
+			inserted, iErr := r.userColletion.InsertOne(ctx, newUser)
+			if iErr != nil {
+				return nil, iErr
+			}
+			oid := inserted.InsertedID.(primitive.ObjectID)
+			return &SignUpResponse{Email: email, UserId: oid.Hex(), FullName: fullName}, nil
+		}
+		return nil, err
+	}
+
+	// Existing user: update fullName if previously empty and provided
+	if fullName != "" && existing.FullName == "" {
+		_, _ = r.userColletion.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"fullName": fullName, "updatedAt": time.Now()}})
+	} else {
+		_, _ = r.userColletion.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"updatedAt": time.Now()}})
+	}
+
+	return &SignUpResponse{Email: email, UserId: existing.ID.Hex(), FullName: existing.FullName}, nil
 }
 
 func ValidatePassword(password string, hashedPassword string) (bool, error) {

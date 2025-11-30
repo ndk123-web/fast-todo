@@ -21,8 +21,7 @@ const signInUserApi = async (data: signInType): Promise<signInResponse> => {
   const response = await api.post(
     `/users/signin`,
     {
-      email: data.email,
-      password: data.password,
+      ...data,
     },
     {
       headers: {

@@ -1,6 +1,8 @@
 export interface signInType {
   email: string;
   password: string;
+  googleLogin: boolean;
+  idToken: string;
 }
 
 interface signInInside {

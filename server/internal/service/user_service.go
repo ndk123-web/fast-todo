@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/ndk123-web/fast-todo/internal/model"
 	"github.com/ndk123-web/fast-todo/internal/repository"
 	"github.com/ndk123-web/fast-todo/pkg/njwt"
 	"golang.org/x/crypto/bcrypt"
-	"os"
 )
 
 var JWTSECRET = []byte(os.Getenv("JWT_SECRET"))
@@ -17,6 +18,7 @@ type UserService interface {
 	SignUpUser(ctx context.Context, email string, password string, fullName string) (*repository.SignUpResponse, error)
 	SignInUser(ctx context.Context, email string, password string) (*repository.SignUpResponse, error)
 	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
+	SignInGoogleUser(ctx context.Context, email string, fullName string) (*repository.SignUpResponse, error)
 }
 
 type userService struct {
@@ -70,6 +72,21 @@ func (s *userService) SignInUser(ctx context.Context, email string, password str
 	response.RefreshToken = refreshString
 
 	return response, nil
+}
+
+// SignInGoogleUser: assumes ID token already verified and supplies email (+ optional name)
+func (s *userService) SignInGoogleUser(ctx context.Context, email string, fullName string) (*repository.SignUpResponse, error) {
+	resp, err := s.repo.SignInGoogleUser(ctx, email, fullName)
+	if err != nil {
+		return nil, err
+	}
+	accessString, refreshString, err := njwt.CreateAccessAndRefreshToken(resp.Email)
+	if err != nil {
+		return nil, err
+	}
+	resp.AccessToken = accessString
+	resp.RefreshToken = refreshString
+	return resp, nil
 }
 
 func BcryptForPassword(password string) (string, error) {

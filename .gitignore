@@ -26,6 +26,8 @@
 # TypeScript
 *.tsbuildinfo
 
+taskplexus-firebase-adminsdk-fbsvc-69245eb849.json
+
 # Golang (Backend)
 # Binaries
 *.exe

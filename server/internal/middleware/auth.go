@@ -2,11 +2,14 @@ package middleware
 
 import (
 	"context"
+	// "encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
+	// FirebaseAuth "github.com/ndk123-web/fast-todo/internal/config"
 )
 
 var JwtSecret = []byte(os.Getenv("JWT_SECRET"))
@@ -19,8 +22,46 @@ type contextKey string
 const UserEmailKey contextKey = "userEmail"
 const UserId contextKey = "userId"
 
+// type AuthReq struct {
+// 	Email       string `json:"email"`
+// 	IdToken     string `json:"idToken"`
+// 	Password    string `json:"password"`
+// 	GoogleLogin bool   `json:"googleLogin"`
+// }
+
+// func GoogleAuthMiddleware(idToken string) (map[string]interface{}, error, bool) {
+// 	// parse and verify jwt
+// 	token, err := FirebaseAuth.FirebaseAuth.VerifyIDToken(context.Background(), idToken)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("Invalid or expired token: %v", err), false
+// 	}
+// 	return token.Claims, nil, true
+// }
+
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// var reqBody AuthReq
+		// // parse the request body to get the idToken
+		// if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		// 	http.Error(w, "Bad Request", http.StatusBadRequest)
+		// 	return
+		// }
+
+		// if reqBody.GoogleLogin {
+		// 	claims, err, ok := GoogleAuthMiddleware(reqBody.IdToken)
+		// 	if err != nil || !ok {
+		// 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+		// 		return
+		// 	}
+
+		// 	userEmail, ok := claims["email"].(string)
+		// 	if !ok {
+		// 		http.Error(w, "Invalid token payload", http.StatusUnauthorized)
+		// 		return
+		// 	}
+		// 	fmt.Println("User Email: ", userEmail)
+		// }
 
 		// get the Authorization
 		authHeader := r.Header.Get("Authorization")
