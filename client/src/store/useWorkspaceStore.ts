@@ -5,6 +5,7 @@ import type { PersistStorage } from "zustand/middleware";
 import useUserStore from "./useUserInfo";
 import { addPendingOperation } from "./indexDB/pendingOps/usePendingOps";
 import type { CreateTaskReq } from "../types/createTaskType";
+import { useToast } from "../components/ToastProvider";
 
 // Todo interface
 export interface Todo {
@@ -19,13 +20,13 @@ export interface Todo {
 
 // Goal interface
 export interface Goal {
-  id: string;               // local id (server may use _id)
+  id: string; // local id (server may use _id)
   title: string;
   description?: string;
   completed?: boolean;
-  target: string;           // original string input (days or metric)
-  targetDays?: number;      // normalized numeric target for progress calculations
-  currentTarget?: number;   // current progress value (0..targetDays)
+  target: string; // original string input (days or metric)
+  targetDays?: number; // normalized numeric target for progress calculations
+  currentTarget?: number; // current progress value (0..targetDays)
   category: string;
   createdAt?: Date;
   workspaceId: string;
@@ -202,7 +203,7 @@ const useWorkspaceStore = create<WorkspaceState>()(
       clearWorkspace: async () => {
         // Clear state in memory
         console.log("Clearing workspace store...");
-        
+
         set({ workspaces: [], currentWorkspace: null });
 
         console.log("After Clear workspaces: ", get().workspaces);
@@ -214,9 +215,12 @@ const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       addWorkspace: async (name: string) => {
+        const { showToast } = useToast();
+
         // need to check for duplicate names ?
         if (get().workspaces.find((ws) => ws.name === name)) {
-          alert("Workspace with this name already exists.");
+          // alert("Workspace with this name already exists.");
+          showToast("Workspace with this name already exists.", "error");
           return;
         }
 
@@ -830,7 +834,8 @@ const useWorkspaceStore = create<WorkspaceState>()(
       ) => {
         const tempId = `goal_${Date.now()}`;
         const parsedTarget = parseInt(goalTarget, 10);
-        const safeTargetDays = isNaN(parsedTarget) || parsedTarget <= 0 ? 1 : parsedTarget;
+        const safeTargetDays =
+          isNaN(parsedTarget) || parsedTarget <= 0 ? 1 : parsedTarget;
         const newGoal: Goal = {
           title: goalTitle,
           target: goalTarget,

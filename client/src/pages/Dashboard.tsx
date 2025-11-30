@@ -11,6 +11,7 @@ import type { Todo } from '../store/useWorkspaceStore';
 import createWorkspaceAPI from '../api/createWorkspaceApi';
 import getAnalyticsApi from '../api/analyticsApi';
 import { addPendingOperation, clearPendingOperations, getPendingOperations } from '../store/indexDB/pendingOps/usePendingOps';
+import { useToast } from '../components/ToastProvider';
 
 // Goal interface - defines structure for goal items
 // Align Goal interface with store (id not _id)
@@ -488,6 +489,7 @@ const Dashboard = () => {
 
   // Sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Workspace states
@@ -617,38 +619,40 @@ const Dashboard = () => {
   // Handle adding new todo with selected priority
   const handleAddTodo =async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentWorkspace) return;
+    
+    if (currentWorkspace.todos.length >= 15) {
+      showToast('You can create maximum 15 todos per workspace. Premium coming soon for unlimited todos!', 'warning');
+      return;
+    }
+    
     if (newTodo.trim()) {
-      // setTodos([...todos, { 
-      //   id: Date.now(), 
-      //   text: newTodo, 
-      //   completed: false, 
-      //   priority: newTodoPriority,
-      //   status: 'not-started',
-      //   createdAt: new Date()
-      // }]);
-
-      // Also add to the current workspace store
-      if (currentWorkspace) {
-        let newtask: CreateTaskReq = {
-          text: newTodo,
-          priority: newTodoPriority,
-          userId: userInfo?.userId || '',
-          workspaceId: currentWorkspace.id,
-          id: `todo_${Date.now()}`, // Temporary client id
-          status: "PENDING",
-        }
-        await addTodo(newtask);
-
-        setNewTodo('');
-        setNewTodoPriority('medium');
-        setShowAddTodo(false);
+      let newtask: CreateTaskReq = {
+        text: newTodo,
+        priority: newTodoPriority,
+        userId: userInfo?.userId || '',
+        workspaceId: currentWorkspace.id,
+        id: `todo_${Date.now()}`, // Temporary client id
+        status: "PENDING",
       }
+      await addTodo(newtask);
+
+      setNewTodo('');
+      setNewTodoPriority('medium');
+      setShowAddTodo(false);
     }
   };
 
   // Handle adding new goal
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentWorkspace) return;
+    
+    if (currentWorkspace.goals.length >= 15) {
+      showToast('You can create maximum 15 goals per workspace. Premium coming soon for unlimited goals!', 'warning');
+      return;
+    }
+    
     if (newGoal.title.trim() && newGoal.target && newGoal.category.trim()) {
       // Delegate to store (store now normalizes targetDays/currentTarget)
       await addGoal(currentWorkspace?.id || '', newGoal.title, newGoal.category, newGoal.target);
@@ -889,8 +893,18 @@ const Dashboard = () => {
   };
 
   // Workspace handlers
+  const { showToast } = useToast();
+  
   const handleAddWorkspace = (e: React.FormEvent) => {
     e.preventDefault();
+    if (workspaces.length >= 5) {
+      showToast('You can create maximum 5 workspaces. Premium coming soon for unlimited workspaces!', 'warning');
+      return;
+    }
+    if(useWorkspaceStore.getState().workspaces.some(v => v.name === newWorkspaceName)) {
+      showToast('You Can not create Duplicate Workspace!', 'warning');
+      return 
+    }
     if (newWorkspaceName.trim()) {
       addWorkspace(newWorkspaceName.trim());
       setNewWorkspaceName('');
@@ -996,6 +1010,114 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button 
+          className="mobile-menu-toggle"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <div className="mobile-logo">
+          <img src="/TaskPlexus.png" alt="TaskPlexus" width={32} />
+          <span>TaskPlexus</span>
+        </div>
+        <div className="mobile-user">
+          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userInfo?.email}`} alt="Profile" className="mobile-user-avatar" />
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)}>
+          <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-menu-header">
+              <div className="mobile-menu-logo">
+                <img src="/TaskPlexus.png" alt="TaskPlexus" width={32} />
+                <span>TaskPlexus</span>
+              </div>
+              <button 
+                className="mobile-menu-close"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mobile-menu-nav">
+              <button 
+                className={`mobile-nav-item ${activeSection === 'overview' ? 'active' : ''}`}
+                onClick={() => { setActiveSection('overview'); setMobileMenuOpen(false); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M7.5 5H16.5C17.6046 5 18.5 5.89543 18.5 7V15C18.5 16.1046 17.6046 17 16.5 17H7.5C6.39543 17 5.5 16.1046 5.5 15V7C5.5 5.89543 6.39543 5 7.5 5Z" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M5.5 8.5L1.5 8.5C1.5 6.29086 3.29086 4.5 5.5 4.5L5.5 8.5Z" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+                <span>Overview</span>
+              </button>
+              <button 
+                className={`mobile-nav-item ${activeSection === 'tasks' ? 'active' : ''}`}
+                onClick={() => { setActiveSection('tasks'); setMobileMenuOpen(false); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M16.5 3.5H3.5C2.94772 3.5 2.5 3.94772 2.5 4.5V15.5C2.5 16.0523 2.94772 16.5 3.5 16.5H16.5C17.0523 16.5 17.5 16.0523 17.5 15.5V4.5C17.5 3.94772 17.0523 3.5 16.5 3.5Z" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M6.5 8.5L8.5 10.5L13.5 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Tasks</span>
+              </button>
+              <button 
+                className={`mobile-nav-item ${activeSection === 'goals' ? 'active' : ''}`}
+                onClick={() => { setActiveSection('goals'); setMobileMenuOpen(false); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="10" cy="10" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="10" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+                <span>Goals</span>
+              </button>
+              <button 
+                className={`mobile-nav-item ${activeSection === 'flowchart' ? 'active' : ''}`}
+                onClick={() => { setActiveSection('flowchart'); setMobileMenuOpen(false); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <rect x="2.5" y="2.5" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                  <rect x="11.5" y="2.5" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                  <rect x="7" y="13.5" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M5.5 6.5V9.5C5.5 10.0523 5.94772 10.5 6.5 10.5H13.5C14.0523 10.5 14.5 10.0523 14.5 9.5V6.5" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M10 10.5V13.5" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+                <span>Flowchart</span>
+              </button>
+              <button 
+                className={`mobile-nav-item ${activeSection === 'analytics' ? 'active' : ''}`}
+                onClick={() => { setActiveSection('analytics'); setMobileMenuOpen(false); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M2.5 15.5L6.5 11.5L9.5 14.5L17.5 6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M13.5 6.5H17.5V10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Analytics</span>
+              </button>
+            </div>
+            
+            <div className="mobile-menu-footer">
+              <div className="mobile-user-info">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userInfo?.email}`} alt="Profile" className="mobile-menu-avatar" />
+                <div>
+                  <div className="mobile-username">{userInfo?.fullName || 'User'}</div>
+                  <div className="mobile-user-email">{userInfo?.email}</div>
+                </div>
+              </div>
+            </div>
+          </nav>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
