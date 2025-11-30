@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import signInUserApi from '../api/signInUserApi';
 import type { signInResponse } from '../types/signType';
 import useUserStore from '../store/useUserInfo';
 import './SignIn.css';
 import { useToast } from '../components/ToastProvider';
+import { auth } from "../config/firebase";
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
   let { signinUser } = useUserStore();
 
@@ -33,6 +36,24 @@ const SignIn = () => {
     } catch (error: any) {
       console.error('Error during sign in:', error);
       showToast('Password / Username is Invalid', 'error');
+    }
+  };
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      setGoogleLoading(true);
+      const googleAuthProvider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, googleAuthProvider);
+      const firebaseUser = result.user;
+      console.log("Firebase User:", firebaseUser);
+      showToast('Google sign-in success', 'success');
+      // If you want to immediately treat this as a backend sign-in, call an API here with idToken.
+      // navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      showToast(err?.message || 'Google sign-in failed', 'error');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -138,6 +159,14 @@ const SignIn = () => {
                   <span>New to fast-todo?</span>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={handleSignInWithGoogle}
+                  className="signin-signup-link"
+                  disabled={googleLoading}
+                >
+                  {googleLoading ? 'Signing in...' : 'Sign In With Google'}
+                </button>
                 <Link to="/signup" className="signin-signup-link">
                   Create an account
                 </Link>
