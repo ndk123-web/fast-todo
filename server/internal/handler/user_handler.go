@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-jwt/jwt"
-	cfg "github.com/ndk123-web/fast-todo/internal/config"
-	"github.com/ndk123-web/fast-todo/internal/repository"
-	"github.com/ndk123-web/fast-todo/internal/service"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt"
+	// "github.com/ndk123-web/fast-todo/internal/config"
+	cfg "github.com/ndk123-web/fast-todo/internal/config"
+	// "github.com/ndk123-web/fast-todo/internal/repository"
+	"github.com/ndk123-web/fast-todo/internal/service"
 )
 
 type UserHandler interface {
@@ -48,11 +50,54 @@ func (h *userHandler) GetUserTodos(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userTodos)
 }
 
+type signUpBody struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	FullName    string `json:"fullName"`
+	GoogleLogin bool   `json:"googleLogin"`
+	IdToken     string `json:"idToken"`
+}
+
 // sign up user handler
 func (h *userHandler) SignUpUser(w http.ResponseWriter, r *http.Request) {
-	var bodyResponse repository.UserStruct
+	var bodyResponse signUpBody
 	if err := json.NewDecoder(r.Body).Decode(&bodyResponse); err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+		return
+	}
+
+	fmt.Println("Google Login: ", bodyResponse.GoogleLogin)
+
+	if bodyResponse.GoogleLogin {
+		if bodyResponse.IdToken == "" { // idToken required for google flow
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Missing Google ID token"})
+			return
+		}
+		token, err := cfg.FirebaseAuth.VerifyIDToken(context.Background(), bodyResponse.IdToken)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Invalid Google Token"})
+			return
+		}
+
+		emailClaim, ok := token.Claims["email"].(string)
+		if !ok || emailClaim == "" {
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Email Missing in Google Token"})
+			return
+		}
+
+		nameClaim, ok := token.Claims["name"].(string)
+		if !ok || nameClaim == "" {
+			json.NewEncoder(w).Encode(map[string]string{"Error": "Name Missing in Google Token"})
+			return
+		}
+
+		result, err := h.service.SignUpWithGoogle(context.Background(), emailClaim, nameClaim)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]string{"Error": err.Error()})
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]any{"response": result, "success": "true"})
 		return
 	}
 

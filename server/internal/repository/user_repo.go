@@ -27,6 +27,7 @@ type UserRepository interface {
 	SignInUser(ctx context.Context, email string, password string) (*SignUpResponse, error)
 	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
 	SignInGoogleUser(ctx context.Context, email string, fullName string) (*SignUpResponse, error)
+	SignUpWithGoogle(ctx context.Context, email string, fullName string) (*SignUpResponse, error)
 }
 
 type userRepo struct {
@@ -115,6 +116,40 @@ func (r *userRepo) SignUpUser(ctx context.Context, email string, password string
 	}, nil
 }
 
+func (r *userRepo) SignUpWithGoogle(ctx context.Context, email string, fullName string) (*SignUpResponse, error) {
+	if email == "" || fullName == "" {
+		return nil, errors.New("Email/FullName is Missing in Repo")
+	}
+
+	// Try to find existing user
+	filter := bson.M{"email": email}
+
+	var existing SignInUserRequest
+	err := r.userColletion.FindOne(ctx, filter).Decode(&existing)
+	if err == nil {
+		// user exists -> error
+		return nil, errors.New("User Already Exists")
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		// other db error
+		return nil, err
+	}
+	// no documents -> create new user
+	randPass := primitive.NewObjectID().Hex()
+	hashed, hErr := nbcrypt.BcryptForPassword(randPass)
+	if hErr != nil {
+		return nil, hErr
+	}
+	now := time.Now()
+	newUser := UserStruct{Email: email, Password: hashed, CreatedAt: now, UpdatedAt: now, FullName: fullName}
+	inserted, iErr := r.userColletion.InsertOne(ctx, newUser)
+	if iErr != nil {
+		return nil, iErr
+	}
+	oid := inserted.InsertedID.(primitive.ObjectID)
+	return &SignUpResponse{Email: email, UserId: oid.Hex(), FullName: fullName}, nil
+}
+
 type SignInUserRequest struct {
 	Email          string             `json:"email" bson:"email"`
 	ID             primitive.ObjectID `json:"_id" bson:"_id"`
@@ -160,35 +195,21 @@ func (r *userRepo) SignInGoogleUser(ctx context.Context, email string, fullName 
 		return nil, errors.New("email empty")
 	}
 
-	// Try to find existing user
+	// Find existing user only; do NOT create here.
 	filter := bson.M{"email": email}
-
 	var existing SignInUserRequest
 	err := r.userColletion.FindOne(ctx, filter).Decode(&existing)
-
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			// Create new user with random password placeholder (hashed)
-			randPass := primitive.NewObjectID().Hex()
-			hashed, hErr := nbcrypt.BcryptForPassword(randPass)
-			if hErr != nil {
-				return nil, hErr
-			}
-			now := time.Now()
-			newUser := UserStruct{Email: email, Password: hashed, CreatedAt: now, UpdatedAt: now, FullName: fullName}
-			inserted, iErr := r.userColletion.InsertOne(ctx, newUser)
-			if iErr != nil {
-				return nil, iErr
-			}
-			oid := inserted.InsertedID.(primitive.ObjectID)
-			return &SignUpResponse{Email: email, UserId: oid.Hex(), FullName: fullName}, nil
+			return nil, errors.New("User Not Found. Please sign up first")
 		}
 		return nil, err
 	}
 
-	// Existing user: update fullName if previously empty and provided
+	// Existing user: optionally update name and updatedAt
 	if fullName != "" && existing.FullName == "" {
 		_, _ = r.userColletion.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"fullName": fullName, "updatedAt": time.Now()}})
+		existing.FullName = fullName
 	} else {
 		_, _ = r.userColletion.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"updatedAt": time.Now()}})
 	}

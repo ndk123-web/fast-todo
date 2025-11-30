@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -19,6 +20,7 @@ type UserService interface {
 	SignInUser(ctx context.Context, email string, password string) (*repository.SignUpResponse, error)
 	UpdateUserName(ctx context.Context, userId string, newName string) (bool, error)
 	SignInGoogleUser(ctx context.Context, email string, fullName string) (*repository.SignUpResponse, error)
+	SignUpWithGoogle(ctx context.Context, email string, fullName string) (*repository.SignUpResponse, error)
 }
 
 type userService struct {
@@ -38,6 +40,27 @@ func (s *userService) SignUpUser(ctx context.Context, email string, password str
 	}
 
 	response, err := s.repo.SignUpUser(ctx, email, hashedPassword, fullName)
+	if err != nil {
+		return nil, err
+	}
+
+	accessString, refreshString, err := njwt.CreateAccessAndRefreshToken(email)
+	if err != nil {
+		return nil, err
+	}
+	// inject tokens with response
+	response.AccessToken = accessString
+	response.RefreshToken = refreshString
+
+	return response, nil
+}
+
+func (s *userService) SignUpWithGoogle(ctx context.Context, email string, fullName string) (*repository.SignUpResponse, error) {
+	if email == "" || fullName == "" {
+		return nil, errors.New("Email/FullName is Missing in Service")
+	}
+
+	response, err := s.repo.SignUpWithGoogle(ctx, email, fullName)
 	if err != nil {
 		return nil, err
 	}

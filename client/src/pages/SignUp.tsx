@@ -4,6 +4,8 @@ import signUpUserApi from '../api/signUpUserApi';
 import useUserStore from '../store/useUserInfo';
 import './SignUp.css';
 import { useToast } from '../components/ToastProvider';
+import { auth } from '../config/firebase';
+import { signInWithPopup , GoogleAuthProvider } from 'firebase/auth';
 
 const SignUp = () => {
   const [name, setName] = useState('');
@@ -27,7 +29,7 @@ const SignUp = () => {
     }
 
     try {
-      const response: any = await signUpUserApi({ fullName: name, email, password });
+      const response: any = await signUpUserApi({ fullName: name, email, password, googleLogin: false, idToken: "" });
       console.log('Sign Up Response:', response);
       if (response?.success && response.success !== 'true') {
         showToast(response?.Error || 'Sign up failed', 'error');
@@ -45,6 +47,41 @@ const SignUp = () => {
       showToast(error?.message || 'Unexpected sign up error', 'error');
     }
   };
+
+  const handleGoogleSignUp = async () => {
+    const googleProvider = new GoogleAuthProvider();
+    
+    let googleLoginFlag = true;
+    const result = await signInWithPopup(auth,googleProvider)
+
+    const firebaseUser = result.user;
+    const idToken = await firebaseUser.getIdToken()
+
+    console.log("Google Login sending flag: ", googleLoginFlag);
+    console.log("Firebase User:", firebaseUser);
+    console.log("Google Login Flag: ",googleLoginFlag)
+    
+    try {
+      const response: any = await signUpUserApi({ fullName: name, email, password , googleLogin: googleLoginFlag, idToken });
+      console.log('Sign Up Response:', response);
+      if (response?.success && response.success !== 'true') {
+        showToast(response?.Error || 'Sign up failed', 'error');
+        return;
+      }
+      if (response && response.response) {
+        signinUser(response.response);
+        showToast('Account created successfully', 'success');
+        navigate('/dashboard');
+      } else {
+        showToast(response.Error || 'Invalid sign up response', 'error');
+      }
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      showToast(error?.message || 'Unexpected sign up error', 'error');
+    }
+
+
+  }
 
   return (
     <div className="signup-container">
@@ -144,6 +181,9 @@ const SignUp = () => {
                   <span>Already have an account?</span>
                 </div>
 
+                <button onClick={()=>handleGoogleSignUp()} className="signup-signin-link">
+                  Sign Up With Google
+                </button>
                 <Link to="/signin" className="signup-signin-link">
                   Sign in instead
                 </Link>

@@ -2,6 +2,8 @@ export interface SignUpRequest {
   email: string;
   password: string;
   fullName: string;
+  googleLogin: boolean;
+  idToken: string;
 }
 
 interface signUpInside {

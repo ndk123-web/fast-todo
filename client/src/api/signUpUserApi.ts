@@ -18,9 +18,7 @@ const signUpUserApi = async (data: SignUpRequest): Promise<signUpResponse> => {
   // );
 
   const response = await api.post(`/users/signup`, {
-    email: data.email,
-    password: data.password,
-    fullname: data.fullName,
+    ...data,
   });
 
   if (response.status < 200 || response.status >= 300) {
