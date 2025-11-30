@@ -51,7 +51,7 @@ const SignIn = () => {
       const firebaseUser = result.user;
       const idToken = await firebaseUser.getIdToken();
       console.log("Firebase User:", firebaseUser);
-      console.log("Google Login sending flag: ", googleFlag);
+      console.log("Google Login sending flag: ", googleFlag); 
       try {
       const response: signInResponse & { success?: string; Error?: string } = await signInUserApi({ 
         email: firebaseUser.email || '',

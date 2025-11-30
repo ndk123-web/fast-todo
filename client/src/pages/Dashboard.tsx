@@ -582,18 +582,18 @@ const Dashboard = () => {
         console.error('Failed to fetch analytics:', error);
         // Fallback to mock data
         const mockData = [
-          { month: 'Jan', completed: 15, label: 'January' },
-          { month: 'Feb', completed: 22, label: 'February' },
-          { month: 'Mar', completed: 18, label: 'March' },
-          { month: 'Apr', completed: 25, label: 'April' },
-          { month: 'May', completed: 30, label: 'May' },
-          { month: 'Jun', completed: 28, label: 'June' },
-          { month: 'Jul', completed: 35, label: 'July' },
-          { month: 'Aug', completed: 32, label: 'August' },
-          { month: 'Sep', completed: 27, label: 'September' },
-          { month: 'Oct', completed: 29, label: 'October' },
-          { month: 'Nov', completed: 24, label: 'November' },
-          { month: 'Dec', completed: 26, label: 'December' },
+          { month: 'Jan', completed: 0, label: 'January' },
+          { month: 'Feb', completed: 0, label: 'February' },
+          { month: 'Mar', completed: 0, label: 'March' },
+          { month: 'Apr', completed: 0, label: 'April' },
+          { month: 'May', completed: 0, label: 'May' },
+          { month: 'Jun', completed: 0, label: 'June' },
+          { month: 'Jul', completed: 0, label: 'July' },
+          { month: 'Aug', completed: 0, label: 'August' },
+          { month: 'Sep', completed: 0, label: 'September' },
+          { month: 'Oct', completed: 0, label: 'October' },
+          { month: 'Nov', completed: 0, label: 'November' },
+          { month: 'Dec', completed: 0, label: 'December' },
         ];
         setAnalyticsData(mockData);
       } finally {
